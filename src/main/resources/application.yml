@@ -1,0 +1,44 @@
+server:
+  port: 8010
+  servlet:
+    # 配置应用访问上下文路径
+    context-path: /api
+
+spring:
+  jackson:
+    default-property-inclusion: non_null # JSON处理时忽略非空字段
+  application:
+    name: intelliStore-co-pic-helper
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/intelliStore_co_pic_helper
+    username: root
+    password: root
+  servlet:
+    multipart:
+      max-file-size: 10MB
+mybatis-plus:
+  global-config:
+    db-config:
+      logic-delete-field: isDelete # 逻辑删除字段
+      logic-delete-value: 1 # 默认逻辑删除值
+      logic-not-delete-value: 0 # 默认逻辑未删除值
+  #      update-strategy: not_null # 全局忽略null值更新
+  configuration:
+    # 仅在开发环境启用日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: false
+knife4j:
+  enable: true
+  openapi:
+    title: 智存协图助手官方文档
+    description: 智存协图助手
+    email: 3425588767@qq.com
+    version: v1.0
+    group:
+      default:
+        api-rule: package
+        api-rule-resources:
+          - com.hao_xiao_zi.intellistorecopichelper.controller
+          - com.hao_xiao_zi.intellistorecopichelper.manager
