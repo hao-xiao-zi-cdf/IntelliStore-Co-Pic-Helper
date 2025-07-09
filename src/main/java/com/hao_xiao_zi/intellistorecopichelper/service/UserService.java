@@ -1,8 +1,10 @@
 package com.hao_xiao_zi.intellistorecopichelper.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserCreateDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserEditDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserQueryDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserUpdateDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
@@ -10,6 +12,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.hao_xiao_zi.intellistorecopichelper.model.vo.UserVO;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * @author 34255
@@ -34,11 +37,17 @@ public interface UserService extends IService<User> {
 
     void userUpdate(UserUpdateDTO userUpdateDTO);
 
+    UpdateWrapper<User> getUseUpdateWrapper(UserUpdateDTO userUpdateDTO);
+
     User getUserById(Long id);
+
+    List<UserVO> getUserVOList(List<User> userList);
 
     QueryWrapper<User> getQueryWrapper(UserQueryDTO userQueryDTO);
 
     IPage<UserVO> userPageQuery(UserQueryDTO userQueryDTO);
 
     Boolean isAdmin(User user);
+
+    void userEdit(UserEditDTO userEditDTO, HttpServletRequest request);
 }

@@ -6,6 +6,7 @@ import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -13,6 +14,7 @@ import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserCreateDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserEditDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserQueryDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserUpdateDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
@@ -20,15 +22,23 @@ import com.hao_xiao_zi.intellistorecopichelper.model.enums.UserRoleEnum;
 import com.hao_xiao_zi.intellistorecopichelper.model.vo.UserVO;
 import com.hao_xiao_zi.intellistorecopichelper.service.UserService;
 import com.hao_xiao_zi.intellistorecopichelper.mapper.UserMapper;
+import com.hao_xiao_zi.intellistorecopichelper.utils.RegexUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import static com.hao_xiao_zi.intellistorecopichelper.constant.PasswordConstant.DEFAULT_PASSWORD;
+import static com.hao_xiao_zi.intellistorecopichelper.constant.PasswordConstant.SALTED_STRING;
+import static com.hao_xiao_zi.intellistorecopichelper.constant.SystemConstant.*;
 
 /**
  * @author 34255
@@ -40,11 +50,8 @@ import java.util.UUID;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         implements UserService {
 
-    private final UserMapper userMapper;
-
-    public UserServiceImpl(UserMapper userMapper) {
-        this.userMapper = userMapper;
-    }
+    @Resource
+    public UserMapper userMapper;
 
     /**
      * 用户注册
@@ -57,9 +64,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
         // 1.参数检验
         ThrowUtils.throwIf(ObjectUtil.hasEmpty(userAccount,userPassword,checkPassword),new BusinessException(ErrorCode.PARAMS_ERROR));
-        ThrowUtils.throwIf(userAccount.length() < 8,new BusinessException(ErrorCode.PARAMS_ERROR,"账号长度不小于8位"));
-        ThrowUtils.throwIf(userPassword.length() < 8 || userPassword.length() > 16,new BusinessException(ErrorCode.PARAMS_ERROR,"密码长度为8~16位"));
-        ThrowUtils.throwIf(!ObjectUtil.equal(checkPassword,userPassword),new BusinessException(ErrorCode.PARAMS_ERROR,"两次输入的密码不一样"));
+        ThrowUtils.throwIf(RegexUtils.isAccountInvalid(userAccount), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的帐号不符合格式"));
+        ThrowUtils.throwIf(RegexUtils.isPasswordInvalid(userPassword), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
+        ThrowUtils.throwIf(!ObjectUtil.equal(checkPassword, userPassword), new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致"));
 
         // 2.判断是否为已注册用户
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -73,8 +80,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         User user = User.builder().userAccount(userAccount)
                 .userPassword(encryptPassword)
                 .userRole(UserRoleEnum.USER.getValue())
-                .userName("zcxt_" + UUID.randomUUID())
-                .userAvatar("https://img2.baidu.com/it/u=3921464713,1750126262&fm=253&fmt=auto&app=138&f=PNG?w=500&h=500")
+                .userName(PROJECT_PREFIX + UUID.randomUUID())
+                .userAvatar(DEFAULT_AVATAR)
                 .shareCode(RandomUtil.randomNumbers(10)).build();
         return save(user);
     }
@@ -90,8 +97,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public UserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 1.参数校验
         ThrowUtils.throwIf(ObjectUtil.hasEmpty(userAccount,userPassword),new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空"));
-        ThrowUtils.throwIf(userAccount.length() < 8,new BusinessException(ErrorCode.PARAMS_ERROR,"账号长度不小于8位"));
-        ThrowUtils.throwIf(userPassword.length() < 8 || userPassword.length() > 16,new BusinessException(ErrorCode.PARAMS_ERROR,"密码长度为8~16位"));
+        ThrowUtils.throwIf(RegexUtils.isAccountInvalid(userAccount), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的账号不符合格式"));
+        ThrowUtils.throwIf(RegexUtils.isPasswordInvalid(userPassword), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
 
         // 2.密码加密
         String encryptPassword = getEncryptPassword(userPassword);
@@ -107,7 +114,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
         // 4.保存到session中
         HttpSession session = request.getSession();
-        session.setAttribute("user_login_status",user);
+        session.setAttribute(USER_LOGIN_STATUS, user);
         UserVO userVO = new UserVO();
         BeanUtil.copyProperties(user,userVO);
 
@@ -123,7 +130,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public String getEncryptPassword(String userPassword){
         // 加盐，混淆密码
-        return DigestUtils.md5DigestAsHex(("s_97&#!p" + userPassword).getBytes());
+        return DigestUtils.md5DigestAsHex((SALTED_STRING + userPassword).getBytes());
     }
 
     /**
@@ -135,7 +142,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public User getLoginUser(HttpServletRequest request) {
         // 1.查询用户
         HttpSession session = request.getSession();
-        User currentUser = (User) session.getAttribute("user_login_status");
+        User currentUser = (User) session.getAttribute(USER_LOGIN_STATUS);
 
         // 2.判空
         ThrowUtils.throwIf(ObjectUtil.isEmpty(currentUser) || currentUser.getId() == null,new BusinessException(ErrorCode.NOT_LOGIN_ERROR));
@@ -156,15 +163,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public boolean userLogout(HttpServletRequest request) {
 
         // 1.先判断是否已登录
-        Object userObj = request.getSession().getAttribute("user_login_status");
+        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATUS);
         if (userObj == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
         // 2.移除登录状态
-        request.getSession().removeAttribute("user_login_status");
+        request.getSession().removeAttribute(USER_LOGIN_STATUS);
         return true;
     }
 
+    /**
+     * 用户创建
+     *
+     * @param userCreateDTO 用户创建信息的数据传输对象
+     *                      此方法负责处理用户创建逻辑，包括参数校验、检查账号是否重复以及插入用户数据
+     */
     @Override
     public void userCreate(UserCreateDTO userCreateDTO) {
         // 1.参数校验
@@ -176,14 +189,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         ThrowUtils.throwIf(!ObjectUtil.isEmpty(user),new BusinessException(ErrorCode.PARAMS_ERROR,"账号重复"));
 
         // 3.插入记录
-        user = BeanUtil.copyProperties(userCreateDTO,User.class);
-        user.setUserPassword(getEncryptPassword("12345678"));
-        user.setUserAvatar("https://img2.baidu.com/it/u=3921464713,1750126262&fm=253&fmt=auto&app=138&f=PNG?w=500&h=500");
-        user.setUserName("zcxt_" + UUID.randomUUID());
+        user = BeanUtil.copyProperties(userCreateDTO, User.class);
+        user.setUserPassword(getEncryptPassword(DEFAULT_PASSWORD));
+        user.setUserAvatar(DEFAULT_AVATAR);
+        user.setUserName(PROJECT_PREFIX + UUID.randomUUID());
         boolean isOk = save(user);
-        ThrowUtils.throwIf(!isOk,new BusinessException(ErrorCode.OPERATION_ERROR,"插入失败"));
+        ThrowUtils.throwIf(!isOk, new BusinessException(ErrorCode.OPERATION_ERROR, "插入失败"));
     }
 
+    /**
+     * 根据id删除用户
+     *
+     * @param id 用户id
+     */
     @Override
     public void userRemove(Long id) {
         // 1.参数校验
@@ -192,21 +210,98 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         User user = query().eq("id", id).one();
         ThrowUtils.throwIf(ObjectUtil.isEmpty(user),new BusinessException(ErrorCode.PARAMS_ERROR,"删除账号不存在"));
         boolean isOk = removeById(id);
-        ThrowUtils.throwIf(!isOk,new BusinessException(ErrorCode.OPERATION_ERROR,"删除失败"));
+        ThrowUtils.throwIf(!isOk, new BusinessException(ErrorCode.OPERATION_ERROR, "删除失败"));
     }
 
+    /**
+     * 更新用户信息
+     *
+     * @param userUpdateDTO 用户更新数据传输对象，包含需要更新的用户信息
+     */
     @Override
     public void userUpdate(UserUpdateDTO userUpdateDTO) {
         // 1.参数校验
         ThrowUtils.throwIf(ObjectUtil.isEmpty(userUpdateDTO),new BusinessException(ErrorCode.PARAMS_ERROR));
-        ThrowUtils.throwIf((ObjectUtil.hasEmpty(userUpdateDTO.getUserAccount(),userUpdateDTO.getId()) || userUpdateDTO.getUserAccount().length() < 8),new BusinessException(ErrorCode.PARAMS_ERROR));
+        ThrowUtils.throwIf((ObjectUtil.hasEmpty(userUpdateDTO.getUserAccount(), userUpdateDTO.getId()) || RegexUtils.isAccountInvalid(userUpdateDTO.getUserAccount())), new BusinessException(ErrorCode.PARAMS_ERROR));
 
-        // 2.修改用户
-        User user = BeanUtil.copyProperties(userUpdateDTO,User.class);
-        boolean isOk = updateById(user);
-        ThrowUtils.throwIf(!isOk,new BusinessException(ErrorCode.OPERATION_ERROR,"更新失败"));
+        // 2.设置条件构造器
+        UpdateWrapper<User> wrapper = getUseUpdateWrapper(userUpdateDTO);
+
+        // 更新
+        boolean isOk = update(wrapper);
+        ThrowUtils.throwIf(!isOk, new BusinessException(ErrorCode.OPERATION_ERROR, "更新失败"));
     }
 
+    /**
+     * 编辑用户信息的方法
+     *
+     * @param userEditDTO 包含用户编辑信息的数据传输对象
+     * @param request     用于获取登录用户信息，判断是否为本人操作
+     */
+    @Override
+    public void userEdit(UserEditDTO userEditDTO, HttpServletRequest request) {
+        // 参数校验
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(userEditDTO), new BusinessException(ErrorCode.PARAMS_ERROR));
+        String id = userEditDTO.getId();
+        String account = userEditDTO.getUserAccount();
+        String password = userEditDTO.getUserPassword();
+        String phone = userEditDTO.getPhone();
+        String email = userEditDTO.getEmail();
+        String profile = userEditDTO.getUserProfile();
+
+        ThrowUtils.throwIf(account != null && RegexUtils.isAccountInvalid(account), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的账号不符合格式"));
+        ThrowUtils.throwIf(password != null && RegexUtils.isPasswordInvalid(password), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
+        ThrowUtils.throwIf(phone != null && RegexUtils.isPhoneInvalid(phone), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的手机号不符合格式"));
+        ThrowUtils.throwIf(email != null && RegexUtils.isEmailInvalid(email), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的邮箱不符合格式"));
+
+        // 判断是否为本人操作
+        ThrowUtils.throwIf(!userEditDTO.getId().equals(getLoginUser(request).getId()), new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限，非本人操作"));
+
+        // 设置条件构造器
+        UserUpdateDTO userUpdateDTO = BeanUtil.copyProperties(userEditDTO, UserUpdateDTO.class);
+        UpdateWrapper<User> wrapper = getUseUpdateWrapper(userUpdateDTO);
+        wrapper.set(StrUtil.isNotBlank(password), "userPassword", password);
+        wrapper.set(StrUtil.isNotBlank(phone), "phone", phone);
+        wrapper.set(StrUtil.isNotBlank(email), "email", email);
+        wrapper.set(StrUtil.isNotBlank(profile), "userProfile", profile);
+        wrapper.set("editTime", Timestamp.valueOf(LocalDateTime.now()));
+
+        // 编辑
+        boolean isOk = update(wrapper);
+        ThrowUtils.throwIf(!isOk,new BusinessException(ErrorCode.OPERATION_ERROR,"编辑信息失败"));
+    }
+
+    /**
+     * 根据用户更新DTO获取用户更新条件包装器
+     * 该方法用于构建一个UpdateWrapper，用于后续的用户信息更新操作
+     * 它将根据用户更新DTO中的信息，设置更新条件和更新内容
+     *
+     * @param userUpdateDTO 用户更新DTO，包含需要更新的用户信息
+     * @return UpdateWrapper<User> 用户更新条件包装器，用于执行更新操作
+     */
+    @Override
+    public UpdateWrapper<User> getUseUpdateWrapper(UserUpdateDTO userUpdateDTO) {
+        UpdateWrapper<User> wrapper = new UpdateWrapper<>();
+
+        Long id = userUpdateDTO.getId();
+        String userAccount = userUpdateDTO.getUserAccount();
+        String userName = userUpdateDTO.getUserName();
+        String userAvatar = userUpdateDTO.getUserAvatar();
+        String userRole = userUpdateDTO.getUserRole();
+
+        wrapper.set(StrUtil.isNotBlank(userAccount), "userAccount", userAccount);
+        wrapper.set(StrUtil.isNotBlank(userName), "userName", userName);
+        wrapper.set(StrUtil.isNotBlank(userAvatar), "userAvatar", userAvatar);
+        wrapper.set(StrUtil.isNotBlank(userRole), "userRole", userRole);
+        wrapper.eq("id", id);
+        return wrapper;
+    }
+
+    /**
+     * 根据用户id查询用户
+     * @param id 用户id
+     * @return 用户
+     */
     @Override
     public User getUserById(Long id) {
         ThrowUtils.throwIf(id == null || id < 0,new BusinessException(ErrorCode.PARAMS_ERROR));
@@ -215,6 +310,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return user;
     }
 
+    /**
+     * 获取脱敏后的用户信息列表
+     *
+     * @param userQueryDTO 用户查询条件封装对象，包含分页信息和查询过滤条件
+     * @return 返回分页查询结果，包含脱敏后的用户信息的列表和总记录数
+     */
     @Override
     public IPage<UserVO> userPageQuery(UserQueryDTO userQueryDTO) {
         ThrowUtils.throwIf(userQueryDTO == null, ErrorCode.PARAMS_ERROR);
@@ -231,7 +332,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return userVOPage;
     }
 
-    private List<UserVO> getUserVOList(List<User> userList) {
+    /**
+     * 将用户对象列表转换为用户视图对象(脱敏)列表
+     *
+     * @param userList 用户对象列表，不能为空
+     * @return 用户视图对象列表(脱敏)
+     */
+    @Override
+    public List<UserVO> getUserVOList(List<User> userList) {
         List<UserVO> userVOList = new ArrayList<>();
         for(User user : userList){
             UserVO userVO = BeanUtil.copyProperties(user, UserVO.class);
@@ -240,6 +348,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return userVOList;
     }
 
+    /**
+     * 获取用户查询条件构造器
+     * 该方法用于构建用户表的查询条件，根据传入的用户查询DTO中的不同字段进行条件组装
+     *
+     * @param userQueryDTO 用户查询数据传输对象，包含查询所需的各个字段
+     * @return 返回一个QueryWrapper对象，用于执行后续的数据库查询操作
+     */
     @Override
     public QueryWrapper<User> getQueryWrapper(UserQueryDTO userQueryDTO) {
         if (userQueryDTO == null) {
@@ -260,6 +375,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return queryWrapper;
     }
 
+    /**
+     * 判断当前用户是否为管理员
+     * @param user 当前用户
+     * @return 是否
+     */
     @Override
     public Boolean isAdmin(User user) {
         if (user == null) {
