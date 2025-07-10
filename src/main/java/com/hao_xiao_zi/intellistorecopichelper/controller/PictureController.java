@@ -4,11 +4,13 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.hao_xiao_zi.intellistorecopichelper.annotation.AuthCheck;
 import com.hao_xiao_zi.intellistorecopichelper.common.BaseResponse;
 import com.hao_xiao_zi.intellistorecopichelper.common.PageResult;
 import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictrueUpdateDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureQueryDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureReviewDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureUploadDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
@@ -96,19 +98,13 @@ public class PictureController {
      * 根据ID查询图片信息(普通用户)
      *
      * @param id 图片的唯一标识符
-     * @return 包含脱敏后的图片信息的响应对象
+     * @return 通过审核，包含脱敏后的图片信息的响应对象
      */
     @GetMapping("/vo/{id}")
     @ApiOperation("查询图片信息（普通用户）")
     public BaseResponse<PictureVO> getPictureVoById(@PathVariable Long id) {
-        Picture picture = pictureService.getPictureById(id);
-        // 图片信息脱敏
-        PictureVO pictureVO = PictureVO.objToVo(picture);
-
-        // 设置创建者信息
-        User user = userService.getById(picture.getUserId());
-        pictureVO.setUser(BeanUtil.copyProperties(user, UserVO.class));
-        return ResultUtils.success(pictureVO);
+        PictureVO pictureVo = pictureService.getPictureVOById(id);
+        return ResultUtils.success(pictureVo);
     }
 
     /**
@@ -119,8 +115,8 @@ public class PictureController {
      */
     @PostMapping
     @ApiOperation("更新图片（管理员）")
-    public BaseResponse<Boolean> updatePicture(@RequestBody PictrueUpdateDTO pictrueUpdateDTO) {
-        pictureService.pictureUpdate(pictrueUpdateDTO);
+    public BaseResponse<Boolean> updatePicture(@RequestBody PictrueUpdateDTO pictrueUpdateDTO,HttpServletRequest request) {
+        pictureService.pictureUpdate(pictrueUpdateDTO,request);
         return ResultUtils.success(true);
     }
 
@@ -164,7 +160,7 @@ public class PictureController {
      * 查询图片列表（普通用户）脱敏化
      *
      * @param pictureQueryDTO 图片查询条件封装对象，包含分页信息和查询参数
-     * @return 包含图片信息页面的BaseResponse对象
+     * @return 审核通过，包含图片信息页面的BaseResponse对象
      */
     @PostMapping("/vo/list")
     @ApiOperation("查询图片列表（普通用户）")
@@ -178,6 +174,20 @@ public class PictureController {
             return ResultUtils.success(new PageResult(0, Collections.emptyList()));
         }
         return ResultUtils.success(new PageResult(pictureVoPage.getTotal(), pictureVoPage.getRecords()));
+    }
+
+    /**
+     *
+     * @param pictureReviewDTO
+     * @param request
+     * @return
+     */
+    @PostMapping("/review")
+    @ApiOperation("审核图片（管理员）")
+    @AuthCheck(mustRole = "admin")
+    public BaseResponse<Boolean> PictureReview(@RequestBody PictureReviewDTO pictureReviewDTO,HttpServletRequest request) {
+        pictureService.PictureReview(pictureReviewDTO,request);
+        return ResultUtils.success(true);
     }
 
 }
