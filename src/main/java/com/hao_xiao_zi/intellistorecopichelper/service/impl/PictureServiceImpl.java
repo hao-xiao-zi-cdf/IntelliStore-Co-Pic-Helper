@@ -15,6 +15,9 @@ import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
 import com.hao_xiao_zi.intellistorecopichelper.manager.FileManager;
+import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadByLocal;
+import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadTemplate;
+import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadURL;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.file.UploadPictureResult;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictrueUpdateDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureQueryDTO;
@@ -28,6 +31,7 @@ import com.hao_xiao_zi.intellistorecopichelper.model.vo.UserVO;
 import com.hao_xiao_zi.intellistorecopichelper.service.PictureService;
 import com.hao_xiao_zi.intellistorecopichelper.mapper.PictureMapper;
 import com.hao_xiao_zi.intellistorecopichelper.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -47,25 +51,28 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         implements PictureService {
 
     @Resource
-    public FileManager fileManager;
+    public UserService userService;
 
     @Resource
-    public UserService userService;
+    private FileUploadByLocal fileUploadByLocal;
+
+    @Resource
+    private FileUploadURL fileUploadURL;
 
     /**
      * 上传图片方法
      *
-     * @param multipartFile    图片文件
+     * @param inputSource    输入源
      * @param pictureUploadDTO 包含图片上传相关属性的DTO，用于判断创建或更新图片
      * @param request          HTTP请求对象，可用于获取请求相关的信息
      * @return 返回上传图片的结果对象，包含图片的详细信息
      */
     @Override
-    public Picture uploadPicture(MultipartFile multipartFile, PictureUploadDTO pictureUploadDTO, HttpServletRequest request) {
+    public Picture uploadPicture(Object inputSource, PictureUploadDTO pictureUploadDTO, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
 
         // 校验参数
-        ThrowUtils.throwIf(ObjectUtil.hasEmpty(multipartFile, pictureUploadDTO), new BusinessException(ErrorCode.PARAMS_ERROR));
+        ThrowUtils.throwIf(ObjectUtil.hasEmpty(inputSource, pictureUploadDTO), new BusinessException(ErrorCode.PARAMS_ERROR));
 
         // 判断新增或删除操作
         Long pictureId = pictureUploadDTO.getId();
@@ -80,8 +87,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 拼接上传路径(/公共or私有/用户id)
         String uploadPathPrefix = String.format("public/%s", userService.getLoginUser(request).getId());
 
+        // 根据 inputSource 类型区分上传方式
+        FileUploadTemplate pictureUploadTemplate = fileUploadByLocal;
+        if (inputSource instanceof String) {
+            pictureUploadTemplate = fileUploadURL;
+        }
+
         // 上传到COS对象存储
-        UploadPictureResult uploadPictureResult = fileManager.uploadPicture(multipartFile, uploadPathPrefix);
+        UploadPictureResult uploadPictureResult = pictureUploadTemplate.uploadPicture(inputSource, uploadPathPrefix);
 
         // 解析返回的图片信息，封装对象
         Picture picture = new Picture();

@@ -22,7 +22,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 public interface PictureService extends IService<Picture> {
 
-    Picture uploadPicture(MultipartFile multipartFile, PictureUploadDTO pictureUploadDTO, HttpServletRequest request);
+    Picture uploadPicture(Object inputSource, PictureUploadDTO pictureUploadDTO, HttpServletRequest request);
 
     void fillReviewParam(Picture picture, User loginUser);
 

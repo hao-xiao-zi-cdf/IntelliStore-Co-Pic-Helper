@@ -83,40 +83,40 @@ public class FileManager {
     }
 
 
-    public UploadPictureResult uploadPictureByURL(String fileURL, String uploadPathPrefix) {
-
-        // 校验上传图片(大小，后缀...)
-        VerifyURL(fileURL);
-
-        // 拼接上传的文件名称(上传日期 + 随机6位字符 + 原始文件名)
-        String uploadPictureName = String.format("%s_%s.%s",
-                DateUtil.formatDate(new Date()),
-                RandomUtil.randomString(6),
-                FileUtil.mainName(fileURL));
-
-        // 拼接上传文件路径( /用户id/文件名称 ) 便于区分不同用户上传的图片
-        String uploadPicturePath = String.format("/%s/%s", uploadPathPrefix, uploadPictureName);
-
-        // 上传文件，处理返回的图片信息
-        File file = null;
-        try {
-            // 上传文件
-            file = File.createTempFile(uploadPicturePath, null);
-            // 根据url下载文件
-            HttpUtil.downloadFile(fileURL,file);
-
-            PutObjectResult putObjectResult = cosManager.putPicture(uploadPicturePath, file);
-
-            // 解析图片信息，进行对象封装
-            return parseImgInfo(putObjectResult, multipartFile, uploadPicturePath);
-        } catch (Exception e) {
-            log.error("文件上传对象存储失败", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
-        } finally {
-            // 删除临时文件
-            deleteTempFile(file);
-        }
-    }
+//    public UploadPictureResult uploadPictureByURL(String fileURL, String uploadPathPrefix) {
+//
+//        // 校验上传图片(大小，后缀...)
+//        VerifyURL(fileURL);
+//
+//        // 拼接上传的文件名称(上传日期 + 随机6位字符 + 原始文件名)
+//        String uploadPictureName = String.format("%s_%s.%s",
+//                DateUtil.formatDate(new Date()),
+//                RandomUtil.randomString(6),
+//                FileUtil.mainName(fileURL));
+//
+//        // 拼接上传文件路径( /用户id/文件名称 ) 便于区分不同用户上传的图片
+//        String uploadPicturePath = String.format("/%s/%s", uploadPathPrefix, uploadPictureName);
+//
+//        // 上传文件，处理返回的图片信息
+//        File file = null;
+//        try {
+//            // 上传文件
+//            file = File.createTempFile(uploadPicturePath, null);
+//            // 根据url下载文件
+//            HttpUtil.downloadFile(fileURL,file);
+//
+//            PutObjectResult putObjectResult = cosManager.putPicture(uploadPicturePath, file);
+//
+//            // 解析图片信息，进行对象封装
+//            return parseImgInfo(putObjectResult, multipartFile, uploadPicturePath);
+//        } catch (Exception e) {
+//            log.error("文件上传对象存储失败", e);
+//            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
+//        } finally {
+//            // 删除临时文件
+//            deleteTempFile(file);
+//        }
+//    }
 
     private void VerifyURL(String fileURL) {
 

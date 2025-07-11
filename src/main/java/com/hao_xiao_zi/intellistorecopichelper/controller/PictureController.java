@@ -8,6 +8,9 @@ import com.hao_xiao_zi.intellistorecopichelper.annotation.AuthCheck;
 import com.hao_xiao_zi.intellistorecopichelper.common.BaseResponse;
 import com.hao_xiao_zi.intellistorecopichelper.common.PageResult;
 import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
+import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
+import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
+import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictrueUpdateDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureQueryDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureReviewDTO;
@@ -49,20 +52,39 @@ public class PictureController {
     public UserService userService;
 
     /**
-     * 上传图片接口
+     * 本地上传图片接口
      *
      * @param multipartFile    要上传的图片文件
      * @param pictureUploadDTO 包含图片ID，用于判断创建或更新图片
      * @param request          获取登录用户
      * @return 返回图片视图对象，包含了图片详细信息
      */
-    @PostMapping("/upload")
-    @ApiOperation("图片上传")
+    @PostMapping("/upload/local")
+    @ApiOperation("本地图片上传")
     public BaseResponse<PictureVO> uploadPicture(
             @RequestParam MultipartFile multipartFile,
             PictureUploadDTO pictureUploadDTO,
             HttpServletRequest request) {
         Picture picture = pictureService.uploadPicture(multipartFile, pictureUploadDTO, request);
+        PictureVO pictureVO = PictureVO.objToVo(picture);
+        return ResultUtils.success(pictureVO);
+    }
+
+    /**
+     * URL上传图片接口
+     *
+     * @param pictureUploadDTO 包含图片ID，用于判断创建或更新图片
+     * @param request          获取登录用户
+     * @return 返回图片视图对象，包含了图片详细信息
+     */
+    @PostMapping("/upload/url")
+    @ApiOperation("URL图片上传")
+    public BaseResponse<PictureVO> uploadPicture(
+            PictureUploadDTO pictureUploadDTO,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureUploadDTO == null || pictureUploadDTO.getFileUrl() == null,new BusinessException(ErrorCode.PARAMS_ERROR));
+        String fileURL = pictureUploadDTO.getFileUrl();
+        Picture picture = pictureService.uploadPicture(fileURL, pictureUploadDTO, request);
         PictureVO pictureVO = PictureVO.objToVo(picture);
         return ResultUtils.success(pictureVO);
     }
