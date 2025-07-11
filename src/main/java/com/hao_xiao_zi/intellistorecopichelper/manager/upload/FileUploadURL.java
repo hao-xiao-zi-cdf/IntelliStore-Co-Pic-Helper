@@ -27,6 +27,8 @@ import java.util.List;
 @Service
 public class FileUploadURL extends FileUploadTemplate{
 
+    private String picType;
+
     @Override
     protected void VerifyImage(Object inputSource) {
         // 校验参数
@@ -60,8 +62,10 @@ public class FileUploadURL extends FileUploadTemplate{
             if (StrUtil.isNotBlank(contentType)) {
                 // 允许的图片类型
                 final List<String> ALLOW_CONTENT_TYPES = Arrays.asList("image/jpeg", "image/jpg", "image/png", "image/webp");
-                ThrowUtils.throwIf(!ALLOW_CONTENT_TYPES.contains(contentType.toLowerCase()),
-                        ErrorCode.PARAMS_ERROR, "文件类型错误");
+                String target = findMatchInList(ALLOW_CONTENT_TYPES, contentType);
+                ThrowUtils.throwIf(target == null, ErrorCode.PARAMS_ERROR, "文件类型错误");
+                // 截取图片格式
+                picType = "." + target.substring(6);
             }
 
             // 校验文件大小
@@ -83,9 +87,19 @@ public class FileUploadURL extends FileUploadTemplate{
         }
     }
 
+    private static String findMatchInList(List<String> list, String target) {
+        for (String item : list) {
+            if (item.equalsIgnoreCase(target)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+
     @Override
     protected String getFileName(Object inputSource) {
-        return FileUtil.mainName((String)inputSource);
+        return FileUtil.mainName((String)inputSource) + picType;
     }
 
     @Override

@@ -3,10 +3,7 @@ package com.hao_xiao_zi.intellistorecopichelper.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictrueUpdateDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureQueryDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureReviewDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureUploadDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
@@ -45,4 +42,6 @@ public interface PictureService extends IService<Picture> {
     void PictureReview(PictureReviewDTO pictureReviewDTO, HttpServletRequest request);
 
     PictureVO getPictureVOById(Long id);
+
+    Integer PictureUploadByBatch(PictureUploadByBatchDTO pictureUploadByBatchDTO, HttpServletRequest request);
 }

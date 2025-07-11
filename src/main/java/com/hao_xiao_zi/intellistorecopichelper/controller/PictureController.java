@@ -1,8 +1,6 @@
 package com.hao_xiao_zi.intellistorecopichelper.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hao_xiao_zi.intellistorecopichelper.annotation.AuthCheck;
 import com.hao_xiao_zi.intellistorecopichelper.common.BaseResponse;
@@ -11,10 +9,7 @@ import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictrueUpdateDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureQueryDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureReviewDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.PictureUploadDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
 import com.hao_xiao_zi.intellistorecopichelper.model.vo.PictureVO;
@@ -80,7 +75,7 @@ public class PictureController {
     @PostMapping("/upload/url")
     @ApiOperation("URL图片上传")
     public BaseResponse<PictureVO> uploadPicture(
-            PictureUploadDTO pictureUploadDTO,
+            @RequestBody PictureUploadDTO pictureUploadDTO,
             HttpServletRequest request) {
         ThrowUtils.throwIf(pictureUploadDTO == null || pictureUploadDTO.getFileUrl() == null,new BusinessException(ErrorCode.PARAMS_ERROR));
         String fileURL = pictureUploadDTO.getFileUrl();
@@ -210,6 +205,20 @@ public class PictureController {
     public BaseResponse<Boolean> PictureReview(@RequestBody PictureReviewDTO pictureReviewDTO,HttpServletRequest request) {
         pictureService.PictureReview(pictureReviewDTO,request);
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 批量抓取图片
+     * @param pictureUploadByBatchDTO
+     * @param request
+     * @return
+     */
+    @PostMapping("/fetch")
+    @ApiOperation("批量抓取图片（管理员）")
+    @AuthCheck(mustRole = "admin")
+    public BaseResponse<Integer> PictureUploadByBatch(@RequestBody PictureUploadByBatchDTO pictureUploadByBatchDTO, HttpServletRequest request) {
+        Integer fetchCount = pictureService.PictureUploadByBatch(pictureUploadByBatchDTO, request);
+        return ResultUtils.success(fetchCount);
     }
 
 }
