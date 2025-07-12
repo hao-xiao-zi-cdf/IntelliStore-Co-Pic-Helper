@@ -179,19 +179,19 @@ public class PictureController {
      * @param pictureQueryDTO 图片查询条件封装对象，包含分页信息和查询参数
      * @return 审核通过，包含图片信息页面的BaseResponse对象
      */
-    @PostMapping("/vo/list")
-    @ApiOperation("查询图片列表（普通用户）")
-    public BaseResponse<PageResult> getPictureVoList(@RequestBody PictureQueryDTO pictureQueryDTO) {
-        // 执行图片信息的分页查询
-        Page<PictureVO> pictureVoPage = (Page<PictureVO>) pictureService.picturePageVoQuery(pictureQueryDTO);
-
-        // 检查查询结果是否为空
-        if (ObjectUtil.isEmpty(pictureVoPage)) {
-            // 如果查询结果为空，返回一个空的PageResult对象
-            return ResultUtils.success(new PageResult(0, Collections.emptyList()));
-        }
-        return ResultUtils.success(new PageResult(pictureVoPage.getTotal(), pictureVoPage.getRecords()));
-    }
+//    @PostMapping("/vo/list")
+//    @ApiOperation("查询图片列表（普通用户）")
+//    public BaseResponse<PageResult> getPictureVoList(@RequestBody PictureQueryDTO pictureQueryDTO) {
+//        // 执行图片信息的分页查询
+//        Page<PictureVO> pictureVoPage = (Page<PictureVO>) pictureService.picturePageVoQuery(pictureQueryDTO);
+//
+//        // 检查查询结果是否为空
+//        if (ObjectUtil.isEmpty(pictureVoPage)) {
+//            // 如果查询结果为空，返回一个空的PageResult对象
+//            return ResultUtils.success(new PageResult(0, Collections.emptyList()));
+//        }
+//        return ResultUtils.success(new PageResult(pictureVoPage.getTotal(), pictureVoPage.getRecords()));
+//    }
 
     /**
      * 查询图片列表（普通用户）脱敏化
@@ -199,7 +199,7 @@ public class PictureController {
      * @param pictureQueryDTO 图片查询条件封装对象，包含分页信息和查询参数
      * @return 审核通过，包含图片信息页面的BaseResponse对象
      */
-    @PostMapping("/vo/list/cache")
+    @PostMapping("/vo/list/")
     @ApiOperation("查询图片列表（普通用户）")
     public BaseResponse<PageResult> getPictureVoListByCache(@RequestBody PictureQueryDTO pictureQueryDTO) {
         // 执行图片信息的分页查询

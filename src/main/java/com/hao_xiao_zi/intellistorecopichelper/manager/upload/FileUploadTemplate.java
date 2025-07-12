@@ -8,6 +8,7 @@ package com.hao_xiao_zi.intellistorecopichelper.manager.upload;
  * Time: 14:34
  */
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
@@ -18,13 +19,16 @@ import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.manager.CosManager;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.file.UploadPictureResult;
 import com.qcloud.cos.model.PutObjectResult;
+import com.qcloud.cos.model.ciModel.persistence.CIObject;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
+import com.qcloud.cos.model.ciModel.persistence.ProcessResults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.io.File;
 import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -66,9 +70,15 @@ public abstract class FileUploadTemplate {
             PutObjectResult putObjectResult = cosManager.putPicture(uploadPicturePath, file);
 
             // 获取对象存储解析后的图片信息
+            ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
+            UploadPictureResult uploadPictureResult = parseImgProcessInfo(processResults,getFileName(inputSource));
+            if(uploadPictureResult != null){
+                // 压缩成功，返回压缩后的信息
+                return uploadPictureResult;
+            }
 
-            // 解析图片信息，进行对象封装
+            // 压缩失败，返回原图信息
             return parseImgInfo(imageInfo,file,uploadPicturePath);
         } catch (Exception e) {
             log.error("文件上传对象存储失败", e);
@@ -77,6 +87,36 @@ public abstract class FileUploadTemplate {
             // 删除临时文件
             deleteTempFile(file);
         }
+    }
+
+    // 解析图片处理后信息
+    private UploadPictureResult parseImgProcessInfo(ProcessResults processResults,String fileName) {
+
+        UploadPictureResult uploadPictureResult = new UploadPictureResult();
+
+        // 获取所有处理规则的处理结果，一条处理规则对应一条处理结果
+        List<CIObject> CIObjectList = processResults.getObjectList();
+        if(CollUtil.isEmpty(CIObjectList)){
+            return null;
+        }
+
+        // 目前只有一条处理规则
+        CIObject ciObject = CIObjectList.get(0);
+
+        // 计算宽高比例
+        int width = ciObject.getWidth();
+        int height = ciObject.getHeight();
+        double picScale = NumberUtil.round(width * 1.0 / height, 2).doubleValue();
+
+        uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + ciObject.getKey());
+        uploadPictureResult.setPicName(FileUtil.mainName(fileName));
+        uploadPictureResult.setPicSize(ciObject.getSize().longValue());
+        uploadPictureResult.setPicWidth(width);
+        uploadPictureResult.setPicHeight(height);
+        uploadPictureResult.setPicScale(picScale);
+        uploadPictureResult.setPicFormat(ciObject.getFormat());
+
+        return uploadPictureResult;
     }
 
     // 解析图片信息

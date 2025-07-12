@@ -574,30 +574,35 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 构造key，对JSON字符串进行MD5压缩
         String queryCondition = DigestUtils.md5DigestAsHex(jsonStr.getBytes());
 
-        // 查询redis
-        // String pageCacheStr = stringRedisTemplate.opsForValue().get(PICTURE_QUERY_LIST_VO_KEY + queryCondition);
+        // 构建Caffeine-Redis-MySQL-多级缓存
+
         // 查询本地缓存
-        String pageCacheStr = LOCAL_CACHE.getIfPresent(PICTURE_QUERY_LIST_VO_KEY + queryCondition);
-
+        String caffeineCacheJsonStr = LOCAL_CACHE.getIfPresent(PICTURE_QUERY_LIST_VO_KEY + queryCondition);
         // 反序列化为分页对象
-        Page<PictureVO> pageCache = JSONUtil.toBean(pageCacheStr, Page.class);
-
-        // 判断缓存是否命中
-        if (pageCache.getTotal() > 0) {
-            // 缓存命中，直接返回
-            return pageCache;
+        Page<PictureVO> caffeineCacheObj = JSONUtil.toBean(caffeineCacheJsonStr, Page.class);
+        if (caffeineCacheObj.getTotal() > 0) {
+            // 本地缓存命中，直接返回
+            return caffeineCacheObj;
         }
 
-        // 不存在，数据库中查找
+        // 本地缓存未命中，查询redis
+        String redisCacheJsonStr = stringRedisTemplate.opsForValue().get(PICTURE_QUERY_LIST_VO_KEY + queryCondition);
+        // 反序列化为分页对象
+        Page<PictureVO> redisCacheObj = JSONUtil.toBean(redisCacheJsonStr, Page.class);
+        if (redisCacheObj.getTotal() > 0) {
+            // Redis缓存命中，直接返回
+            return redisCacheObj;
+        }
+
+        // 缓存均未命中不存在，查找数据库
         Page<PictureVO> pictureVOIPage = (Page<PictureVO>) picturePageVoQuery(pictureQueryDTO);
 
         // 过期时间随机化，降低缓存雪崩（5~10分钟）
         long time = 3000 + RandomUtil.randomLong(0, 5000);
         String value = JSONUtil.toJsonStr(pictureVOIPage);
-        // 数据库中存在，缓存到redis
-        // stringRedisTemplate.opsForValue().set(PICTURE_QUERY_LIST_VO_KEY + queryCondition,value,time, TimeUnit.SECONDS);
-        // 数据库中存在，缓存到本地缓存
+        // 数据库中存在，缓存到本地和Redis
         LOCAL_CACHE.put(PICTURE_QUERY_LIST_VO_KEY + queryCondition, value);
+        stringRedisTemplate.opsForValue().set(PICTURE_QUERY_LIST_VO_KEY + queryCondition,value,time, TimeUnit.SECONDS);
 
         // 返回数据
         return pictureVOIPage;
