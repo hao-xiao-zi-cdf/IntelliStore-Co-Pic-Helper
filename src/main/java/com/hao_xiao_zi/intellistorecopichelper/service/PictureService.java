@@ -44,4 +44,6 @@ public interface PictureService extends IService<Picture> {
     PictureVO getPictureVOById(Long id);
 
     Integer PictureUploadByBatch(PictureUploadByBatchDTO pictureUploadByBatchDTO, HttpServletRequest request);
+
+    IPage<PictureVO> picturePageVoQueryByCache(PictureQueryDTO pictureQueryDTO);
 }

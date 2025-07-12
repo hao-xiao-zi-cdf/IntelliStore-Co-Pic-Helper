@@ -4,13 +4,17 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
@@ -32,13 +36,19 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
+
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+import static com.hao_xiao_zi.intellistorecopichelper.constant.RedisConstant.PICTURE_QUERY_LIST_VO_KEY;
 
 /**
  * @author 34255
@@ -58,6 +68,21 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private FileUploadURL fileUploadURL;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    // 使用 Caffeine 构建一个本地缓存，用于存储字符串键值对
+    // 初始容量为1024键值对，最大容量为 10000键值对
+    // 缓存中的数据在写入后 5 分钟过期，以防止数据长期未使用占用资源
+    private final Cache<String, String> LOCAL_CACHE =
+        Caffeine.newBuilder().initialCapacity(1024)
+                .maximumSize(10000L)
+                // 缓存 5 分钟移除
+                .expireAfterWrite(5L, TimeUnit.MINUTES)
+                .build();
+
+
 
     /**
      * 上传图片方法
@@ -447,12 +472,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         queryWrapper.like(StrUtil.isNotBlank(reviewMessage), "reviewMessage", reviewMessage);
         queryWrapper.eq(ObjUtil.isNotEmpty(reviewerId), "reviewerId", reviewerId);
 
-        for (String tag : tags) {
-            queryWrapper.like(StrUtil.isNotBlank(tag), "tags", "\"" + tag + "\"");
+        if (!ObjectUtil.isEmpty(tags)) {
+            for (String tag : tags) {
+                queryWrapper.like(StrUtil.isNotBlank(tag), "tags", "\"" + tag + "\"");
+            }
         }
 
         // 排序
-        queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
+        queryWrapper.orderBy(StrUtil.isNotEmpty(sortField),StrUtil.isNotEmpty(sortOrder) && sortOrder.equals("ascend"), sortField);
         return queryWrapper;
     }
 
@@ -536,6 +563,44 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
         }
         return uploadCount;
+    }
+
+    @Override
+    public IPage<PictureVO> picturePageVoQueryByCache(PictureQueryDTO pictureQueryDTO) {
+
+        // 将查询条件转化为JSON字符串
+        String jsonStr = JSONUtil.toJsonStr(pictureQueryDTO);
+
+        // 构造key，对JSON字符串进行MD5压缩
+        String queryCondition = DigestUtils.md5DigestAsHex(jsonStr.getBytes());
+
+        // 查询redis
+        // String pageCacheStr = stringRedisTemplate.opsForValue().get(PICTURE_QUERY_LIST_VO_KEY + queryCondition);
+        // 查询本地缓存
+        String pageCacheStr = LOCAL_CACHE.getIfPresent(PICTURE_QUERY_LIST_VO_KEY + queryCondition);
+
+        // 反序列化为分页对象
+        Page<PictureVO> pageCache = JSONUtil.toBean(pageCacheStr, Page.class);
+
+        // 判断缓存是否命中
+        if (pageCache.getTotal() > 0) {
+            // 缓存命中，直接返回
+            return pageCache;
+        }
+
+        // 不存在，数据库中查找
+        Page<PictureVO> pictureVOIPage = (Page<PictureVO>) picturePageVoQuery(pictureQueryDTO);
+
+        // 过期时间随机化，降低缓存雪崩（5~10分钟）
+        long time = 3000 + RandomUtil.randomLong(0, 5000);
+        String value = JSONUtil.toJsonStr(pictureVOIPage);
+        // 数据库中存在，缓存到redis
+        // stringRedisTemplate.opsForValue().set(PICTURE_QUERY_LIST_VO_KEY + queryCondition,value,time, TimeUnit.SECONDS);
+        // 数据库中存在，缓存到本地缓存
+        LOCAL_CACHE.put(PICTURE_QUERY_LIST_VO_KEY + queryCondition, value);
+
+        // 返回数据
+        return pictureVOIPage;
     }
 }
 
