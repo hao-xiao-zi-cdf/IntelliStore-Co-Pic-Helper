@@ -48,11 +48,11 @@ public abstract class FileUploadTemplate {
         // 校验上传图片(大小，后缀...)
         VerifyImage(inputSource);
 
-        // 拼接上传的文件名称(上传日期 + 随机6位字符 + 原始文件名)
+        // 拼接上传的文件名称(上传日期 + 随机6位字符 + 原始文件后缀名)
         String uploadPictureName = String.format("%s_%s.%s",
                 DateUtil.formatDate(new Date()),
                 RandomUtil.randomString(6),
-                getFileName(inputSource));
+                getFileSuffix(inputSource));
 
         // 拼接上传文件路径( /用户id/文件名称 ) 便于区分不同用户上传的图片
         String uploadPicturePath = String.format("/%s/%s", uploadPathPrefix, uploadPictureName);
@@ -100,21 +100,27 @@ public abstract class FileUploadTemplate {
             return null;
         }
 
-        // 目前只有一条处理规则
-        CIObject ciObject = CIObjectList.get(0);
+        // 压缩处理结果
+        CIObject compressResult = CIObjectList.get(0);
+        CIObject thumbnailResult = CIObjectList.get(0);
+        if(CIObjectList.size() > 1){
+            // 缩略处理结果
+            thumbnailResult = CIObjectList.get(1);
+        }
 
         // 计算宽高比例
-        int width = ciObject.getWidth();
-        int height = ciObject.getHeight();
+        int width = compressResult.getWidth();
+        int height = compressResult.getHeight();
         double picScale = NumberUtil.round(width * 1.0 / height, 2).doubleValue();
 
-        uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + ciObject.getKey());
-        uploadPictureResult.setPicName(FileUtil.mainName(fileName));
-        uploadPictureResult.setPicSize(ciObject.getSize().longValue());
+        uploadPictureResult.setUrl(cosClientConfig.getHost() + "/" + compressResult.getKey());
+        uploadPictureResult.setThumbnailUrl(cosClientConfig.getHost() + "/" + thumbnailResult.getKey());
+        uploadPictureResult.setPicName(fileName);
+        uploadPictureResult.setPicSize(compressResult.getSize().longValue());
         uploadPictureResult.setPicWidth(width);
         uploadPictureResult.setPicHeight(height);
         uploadPictureResult.setPicScale(picScale);
-        uploadPictureResult.setPicFormat(ciObject.getFormat());
+        uploadPictureResult.setPicFormat(compressResult.getFormat());
 
         return uploadPictureResult;
     }
@@ -152,6 +158,16 @@ public abstract class FileUploadTemplate {
         }
     }
 
+    // 获取文件名称
+    private String getFileName(Object inputSource) {
+        if (inputSource instanceof String) {
+            // url
+            return FileUtil.mainName((String)inputSource);
+        }
+        MultipartFile file = (MultipartFile)inputSource;
+        return FileUtil.mainName(file.getOriginalFilename());
+    }
+
     /**
      * 检验上传图片（后缀名，大小）
      * @param inputSource 输入源
@@ -162,7 +178,7 @@ public abstract class FileUploadTemplate {
      * 获取文件名称
      * @param inputSource 输入源
      */
-    protected abstract String getFileName(Object inputSource);
+    protected abstract String getFileSuffix(Object inputSource);
 
     /**
      * 存储到本地临时文件

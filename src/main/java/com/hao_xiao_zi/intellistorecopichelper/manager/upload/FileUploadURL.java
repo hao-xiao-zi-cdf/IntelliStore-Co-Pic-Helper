@@ -98,8 +98,8 @@ public class FileUploadURL extends FileUploadTemplate{
 
 
     @Override
-    protected String getFileName(Object inputSource) {
-        return FileUtil.mainName((String)inputSource) + picType;
+    protected String getFileSuffix(Object inputSource) {
+        return picType;
     }
 
     @Override

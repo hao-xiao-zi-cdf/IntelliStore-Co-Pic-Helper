@@ -41,9 +41,9 @@ public class FileUploadByLocal extends FileUploadTemplate{
     }
 
     @Override
-    protected String getFileName(Object inputSource) {
+    protected String getFileSuffix(Object inputSource) {
         MultipartFile multipartFile = (MultipartFile) inputSource;
-        return multipartFile.getOriginalFilename();
+        return FileUtil.getSuffix(multipartFile.getOriginalFilename());
     }
 
     @Override
