@@ -18,6 +18,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
+import com.hao_xiao_zi.intellistorecopichelper.manager.CosManager;
 import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadByLocal;
 import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadTemplate;
 import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadURL;
@@ -36,7 +37,9 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -81,7 +84,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 // 缓存 5 分钟移除
                 .expireAfterWrite(5L, TimeUnit.MINUTES)
                 .build();
-
+    @Autowired
+    private CosManager cosManager;
 
 
     /**
@@ -195,6 +199,27 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 删除图片
         boolean isOk = removeById(id);
         ThrowUtils.throwIf(!isOk, new BusinessException(ErrorCode.OPERATION_ERROR, "删除图片失败"));
+    }
+
+    @Async// 方法会异步执行
+    @Override
+    public void clearPictureFile(Picture picture){
+        // 判断该图片是否被多条记录使用
+        String pictureUrl = picture.getUrl();
+        long count = this.lambdaQuery()
+                .eq(Picture::getUrl, pictureUrl)
+                .count();
+        // 有不止一条记录用到了该图片，不清理
+        if (count > 1) {
+            return;
+        }
+        // 清理压缩图
+        cosManager.deleteObject(pictureUrl);
+        // 清理缩略图
+        String thumbnailUrl = picture.getThumbnailUrl();
+        if (StrUtil.isNotBlank(thumbnailUrl)) {
+            cosManager.deleteObject(thumbnailUrl);
+        }
     }
 
     /**

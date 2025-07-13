@@ -25,6 +25,8 @@ public interface PictureService extends IService<Picture> {
 
     void pictureDelete(Long id, HttpServletRequest request);
 
+    void clearPictureFile(Picture picture);
+
     Picture getPictureById(Long id);
 
     void pictureUpdate(PictrueUpdateDTO pictrueUpdateDTO, HttpServletRequest request);
