@@ -69,5 +69,17 @@ ALTER TABLE picture
     -- 添加新列
     ADD COLUMN thumbnailUrl varchar(512) NULL COMMENT '缩略图 url';
 
+CREATE TABLE `recycled_images` (
+                                   `recycledId` bigint NOT NULL AUTO_INCREMENT COMMENT '回收站记录ID',
+                                   `imgId` bigint NOT NULL COMMENT '原图片ID',
+                                   `userId` bigint NOT NULL COMMENT '用户ID',
+                                   `recycledTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '图片移入回收站的时间',
+                                   `expireTime` datetime NOT NULL COMMENT '回收站记录过期时间',
+                                   `imageInfo` json NOT NULL COMMENT '图片元数据快照（包含文件名、路径、大小等信息）',
+                                   PRIMARY KEY (`recycledId`),
+                                   UNIQUE KEY `idx_img_unique` (`imgId`) COMMENT '确保同一张图片不会重复进入回收站',
+                                   KEY `idx_user_expire` (`userId`, `expireTime`) COMMENT '加速查询用户的过期回收站记录'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='存储已移入回收站的图片记录，外键约束由程序逻辑实现';
+
 
 
