@@ -8,6 +8,7 @@ import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Space;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
+import com.hao_xiao_zi.intellistorecopichelper.model.enums.SpaceLevelEnum;
 import com.hao_xiao_zi.intellistorecopichelper.model.vo.SpaceVO;
 import com.hao_xiao_zi.intellistorecopichelper.service.SpaceService;
 import com.hao_xiao_zi.intellistorecopichelper.service.UserService;
@@ -18,6 +19,9 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created with IntelliJ IDEA.
@@ -68,7 +72,7 @@ public class SpaceController {
      * @param spaceUpdateDTO 包含更新的空间信息的数据传输对象
      * @return 返回一个BaseResponse对象，其中包含更新操作的成功状态
      */
-    @PostMapping
+    @PostMapping("/update")
     @ApiOperation("更新空间（管理员）")
     public BaseResponse<Boolean> updateSpace(@RequestBody SpaceUpdateDTO spaceUpdateDTO, HttpServletRequest request) {
         spaceService.spaceUpdate(spaceUpdateDTO, request);
@@ -87,4 +91,17 @@ public class SpaceController {
         spaceService.spaceEdit(spaceEditDTO, request);
         return ResultUtils.success(true);
     }
+
+    @GetMapping("/list/level")
+    public BaseResponse<List<SpaceLevel>> listSpaceLevel() {
+        List<SpaceLevel> spaceLevelList = Arrays.stream(SpaceLevelEnum.values()) // 获取所有枚举
+                .map(spaceLevelEnum -> new SpaceLevel(
+                        spaceLevelEnum.getValue(),
+                        spaceLevelEnum.getMean(),
+                        spaceLevelEnum.getMaxCount(),
+                        spaceLevelEnum.getMaxSize()))
+                .collect(Collectors.toList());
+        return ResultUtils.success(spaceLevelList);
+    }
+
 }
