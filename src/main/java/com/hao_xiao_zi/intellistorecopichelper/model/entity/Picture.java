@@ -123,6 +123,10 @@ public class Picture implements Serializable {
      */
     private String thumbnailUrl;
 
+    /**
+     * 空间 id
+     */
+    private Long spaceId;
 
     @TableField(exist = false)
     private static final long serialVersionUID = -6759534738084694927L;

@@ -119,8 +119,8 @@ public class PictureController {
      */
     @GetMapping("/vo/{id}")
     @ApiOperation("查询图片信息（普通用户）")
-    public BaseResponse<PictureVO> getPictureVoById(@PathVariable Long id) {
-        PictureVO pictureVo = pictureService.getPictureVOById(id);
+    public BaseResponse<PictureVO> getPictureVoById(@PathVariable Long id, HttpServletRequest request) {
+        PictureVO pictureVo = pictureService.getPictureVOById(id, request);
         return ResultUtils.success(pictureVo);
     }
 
@@ -160,6 +160,7 @@ public class PictureController {
     @PostMapping("/list")
     @ApiOperation("查询图片列表（管理员）")
     public BaseResponse<PageResult> getPictureList(@RequestBody PictureQueryDTO pictureQueryDTO) {
+        ThrowUtils.throwIf(pictureQueryDTO == null, new BusinessException(ErrorCode.PARAMS_ERROR));
         // 执行图片信息的分页查询
         Page<Picture> picturePage = (Page<Picture>) pictureService.picturePageQuery(pictureQueryDTO);
 
@@ -182,6 +183,7 @@ public class PictureController {
 //    @PostMapping("/vo/list")
 //    @ApiOperation("查询图片列表（普通用户）")
 //    public BaseResponse<PageResult> getPictureVoList(@RequestBody PictureQueryDTO pictureQueryDTO) {
+//    ThrowUtils.throwIf(pictureQueryDTO == null,new BusinessException(ErrorCode.PARAMS_ERROR));
 //        // 执行图片信息的分页查询
 //        Page<PictureVO> pictureVoPage = (Page<PictureVO>) pictureService.picturePageVoQuery(pictureQueryDTO);
 //
@@ -201,9 +203,10 @@ public class PictureController {
      */
     @PostMapping("/vo/list/")
     @ApiOperation("查询图片列表（普通用户）")
-    public BaseResponse<PageResult> getPictureVoListByCache(@RequestBody PictureQueryDTO pictureQueryDTO) {
+    public BaseResponse<PageResult> getPictureVoListByCache(@RequestBody PictureQueryDTO pictureQueryDTO,HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureQueryDTO == null, new BusinessException(ErrorCode.PARAMS_ERROR));
         // 执行图片信息的分页查询
-        Page<PictureVO> pictureVoPage = (Page<PictureVO>) pictureService.picturePageVoQueryByCache(pictureQueryDTO);
+        Page<PictureVO> pictureVoPage = (Page<PictureVO>) pictureService.picturePageVoQueryByCache(pictureQueryDTO,request);
 
         // 检查查询结果是否为空
         if (ObjectUtil.isEmpty(pictureVoPage)) {

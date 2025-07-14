@@ -37,15 +37,17 @@ public interface PictureService extends IService<Picture> {
 
     QueryWrapper<Picture> getQueryWrapper(PictureQueryDTO pictureQueryDTO);
 
-    IPage<PictureVO> picturePageVoQuery(PictureQueryDTO pictureQueryDTO);
+    IPage<PictureVO> picturePageVoQuery(PictureQueryDTO pictureQueryDTO,HttpServletRequest request);
 
     void pictureEdit(PictrueUpdateDTO pictrueUpdateDTO, HttpServletRequest request);
 
     void PictureReview(PictureReviewDTO pictureReviewDTO, HttpServletRequest request);
 
-    PictureVO getPictureVOById(Long id);
+    PictureVO getPictureVOById(Long id, HttpServletRequest request);
 
     Integer PictureUploadByBatch(PictureUploadByBatchDTO pictureUploadByBatchDTO, HttpServletRequest request);
 
-    IPage<PictureVO> picturePageVoQueryByCache(PictureQueryDTO pictureQueryDTO);
+    IPage<PictureVO> picturePageVoQueryByCache(PictureQueryDTO pictureQueryDTO,HttpServletRequest request);
+
+    void checkSpaceAuth(Picture picture, User loginUser);
 }
