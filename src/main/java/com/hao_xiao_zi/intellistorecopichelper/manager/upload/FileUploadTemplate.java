@@ -72,7 +72,7 @@ public abstract class FileUploadTemplate {
             // 获取对象存储解析后的图片信息
             ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
-            UploadPictureResult uploadPictureResult = parseImgProcessInfo(processResults,getFileName(inputSource));
+            UploadPictureResult uploadPictureResult = parseImgProcessInfo(processResults, getFileName(inputSource), imageInfo);
             if(uploadPictureResult != null){
                 // 压缩成功，返回压缩后的信息
                 return uploadPictureResult;
@@ -90,7 +90,7 @@ public abstract class FileUploadTemplate {
     }
 
     // 解析图片处理后信息
-    private UploadPictureResult parseImgProcessInfo(ProcessResults processResults,String fileName) {
+    private UploadPictureResult parseImgProcessInfo(ProcessResults processResults, String fileName, ImageInfo imageInfo) {
 
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
 
@@ -121,6 +121,8 @@ public abstract class FileUploadTemplate {
         uploadPictureResult.setPicHeight(height);
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(compressResult.getFormat());
+        // 获取图片颜色
+        uploadPictureResult.setPicColor(imageInfo.getAve());
 
         return uploadPictureResult;
     }

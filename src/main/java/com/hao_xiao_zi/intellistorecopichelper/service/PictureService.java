@@ -3,6 +3,7 @@ package com.hao_xiao_zi.intellistorecopichelper.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.hao_xiao_zi.intellistorecopichelper.api.imagesearch.model.ImageSearchResult;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -11,6 +12,7 @@ import com.hao_xiao_zi.intellistorecopichelper.model.vo.PictureVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * @author 34255
@@ -50,4 +52,10 @@ public interface PictureService extends IService<Picture> {
     IPage<PictureVO> picturePageVoQueryByCache(PictureQueryDTO pictureQueryDTO,HttpServletRequest request);
 
     void checkSpaceAuth(Picture picture, User loginUser);
+
+    List<ImageSearchResult> searchPictureByPicture(SearchPictureByPictureDTO searchPictureByPictureDTO);
+
+    List<PictureVO> searchPictureByColor(SearchPictureByColorDTO searchPictureByColorDTO,User loginUser);
+
+    void pictureEditByBatch(PictureEditByBatchDTO pictureEditByBatchDTO, User loginUser);
 }

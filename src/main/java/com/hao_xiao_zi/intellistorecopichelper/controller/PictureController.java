@@ -1,8 +1,11 @@
 package com.hao_xiao_zi.intellistorecopichelper.controller;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.http.HttpRequest;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hao_xiao_zi.intellistorecopichelper.annotation.AuthCheck;
+import com.hao_xiao_zi.intellistorecopichelper.api.imagesearch.ImageSearchApiFacade;
+import com.hao_xiao_zi.intellistorecopichelper.api.imagesearch.model.ImageSearchResult;
 import com.hao_xiao_zi.intellistorecopichelper.common.BaseResponse;
 import com.hao_xiao_zi.intellistorecopichelper.common.PageResult;
 import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
@@ -26,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
@@ -244,4 +248,40 @@ public class PictureController {
         return ResultUtils.success(fetchCount);
     }
 
+    /**
+     * 以图搜图
+     */
+    @PostMapping("/search/picture")
+    public BaseResponse<List<ImageSearchResult>> searchPictureByPicture(@RequestBody SearchPictureByPictureDTO searchPictureByPictureDTO) {
+        List<ImageSearchResult> resultList = pictureService.searchPictureByPicture(searchPictureByPictureDTO);
+        return ResultUtils.success(resultList);
+    }
+
+    /**
+     * 颜色搜图
+     * @param searchPictureByColorDTO 颜色搜图参数
+     * @param request 用于获取用户信息
+     * @return 颜色搜图结果
+     */
+    @PostMapping("/search/color")
+    public BaseResponse<List<PictureVO>> searchPicTureByColor (@RequestBody SearchPictureByColorDTO searchPictureByColorDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, new BusinessException(ErrorCode.NOT_LOGIN_ERROR));
+        List<PictureVO> resultList = pictureService.searchPictureByColor(searchPictureByColorDTO, loginUser);
+        return ResultUtils.success(resultList);
+    }
+
+    /**
+     * 批量编辑图片信息（分类，重命名，标签）
+     * @param pictureEditByBatchDTO 图片批量编辑请求参数对象，包含编辑的图片范围以及编辑信息
+     * @param request 用于获取当前登录用户信息
+     * @return 是否成功
+     */
+    @PostMapping("/edit/batch")
+    @ApiOperation("批量编辑图片信息")
+    public BaseResponse<Boolean> pictureEditByBatch (@RequestBody PictureEditByBatchDTO pictureEditByBatchDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        pictureService.pictureEditByBatch(pictureEditByBatchDTO, loginUser);
+        return ResultUtils.success(true);
+    }
 }
