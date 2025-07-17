@@ -1,9 +1,13 @@
 package com.hao_xiao_zi.intellistorecopichelper.controller;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpRequest;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hao_xiao_zi.intellistorecopichelper.annotation.AuthCheck;
+import com.hao_xiao_zi.intellistorecopichelper.api.aliyunai.AliYunAiApi;
+import com.hao_xiao_zi.intellistorecopichelper.api.aliyunai.model.CreateoutPaintingTaskResponse;
+import com.hao_xiao_zi.intellistorecopichelper.api.aliyunai.model.GetoutPaintingTaskResponse;
 import com.hao_xiao_zi.intellistorecopichelper.api.imagesearch.ImageSearchApiFacade;
 import com.hao_xiao_zi.intellistorecopichelper.api.imagesearch.model.ImageSearchResult;
 import com.hao_xiao_zi.intellistorecopichelper.common.BaseResponse;
@@ -49,6 +53,9 @@ public class PictureController {
 
     @Resource
     public UserService userService;
+
+    @Resource
+    private AliYunAiApi aliYunAiApi;
 
     /**
      * 本地上传图片接口
@@ -284,4 +291,27 @@ public class PictureController {
         pictureService.pictureEditByBatch(pictureEditByBatchDTO, loginUser);
         return ResultUtils.success(true);
     }
+
+    /**
+     * 创建 AI 扩图任务
+     */
+    @PostMapping("/out_painting/create_task")
+    public BaseResponse<CreateoutPaintingTaskResponse> createPictureOutPaintingTask(
+            @RequestBody CreatePictureOutPaintingTaskDTO createPictureOutPaintingTaskDTO,
+            HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        CreateoutPaintingTaskResponse response = pictureService.createOutPaintingTask(createPictureOutPaintingTaskDTO, loginUser);
+        return ResultUtils.success(response);
+    }
+
+    /**
+     * 查询 AI 扩图任务
+     */
+    @GetMapping("/out_painting/get_task")
+    public BaseResponse<GetoutPaintingTaskResponse> getPictureOutPaintingTask(String taskId) {
+        ThrowUtils.throwIf(StrUtil.isBlank(taskId), ErrorCode.PARAMS_ERROR);
+        GetoutPaintingTaskResponse task = aliYunAiApi.getOutPaintingTask(taskId);
+        return ResultUtils.success(task);
+    }
+
 }

@@ -17,6 +17,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.hao_xiao_zi.intellistorecopichelper.api.aliyunai.AliYunAiApi;
+import com.hao_xiao_zi.intellistorecopichelper.api.aliyunai.model.CreateOutPaintingTaskRequest;
+import com.hao_xiao_zi.intellistorecopichelper.api.aliyunai.model.CreateoutPaintingTaskResponse;
 import com.hao_xiao_zi.intellistorecopichelper.api.imagesearch.ImageSearchApiFacade;
 import com.hao_xiao_zi.intellistorecopichelper.api.imagesearch.model.ImageSearchResult;
 import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
@@ -95,6 +98,14 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private SpaceService spaceService;
 
+    @Resource
+    private TransactionTemplate transactionTemplate;
+
+    @Resource
+    private AliYunAiApi aliYunAiApi;
+
+
+
     // 使用 Caffeine 构建一个本地缓存，用于存储字符串键值对
     // 初始容量为1024键值对，最大容量为 10000键值对
     // 缓存中的数据在写入后 5 分钟过期，以防止数据长期未使用占用资源
@@ -104,8 +115,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 // 缓存 5 分钟移除
                 .expireAfterWrite(5L, TimeUnit.MINUTES)
                 .build();
-    @Autowired
-    private TransactionTemplate transactionTemplate;
 
     /**
      * 上传图片方法
@@ -897,6 +906,30 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
     }
 
+    @Override
+    public CreateoutPaintingTaskResponse createOutPaintingTask(CreatePictureOutPaintingTaskDTO createPictureOutPaintingTaskDTO, User loginUser) {
+
+        // 参数校验
+        ThrowUtils.throwIf(ObjectUtil.hasEmpty(createPictureOutPaintingTaskDTO), ErrorCode.PARAMS_ERROR);
+        Long pictureId = createPictureOutPaintingTaskDTO.getId();
+        CreateOutPaintingTaskRequest.Parameters parameters = createPictureOutPaintingTaskDTO.getParameters();
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
+        ThrowUtils.throwIf(pictureId == null || pictureId < 0 || parameters == null, ErrorCode.PARAMS_ERROR);
+
+        // 空间权限校验
+        Picture picture = getPictureById(pictureId);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(picture), ErrorCode.NOT_FOUND_ERROR,"图片资源不存在");
+        Space space = spaceService.getById(picture.getSpaceId());
+        ThrowUtils.throwIf(space != null && !Objects.equals(space.getUserId(), loginUser.getId()),new BusinessException(ErrorCode.NO_AUTH_ERROR,"非空间创建人，没有权限"));
+
+        // 封装参数
+        CreateOutPaintingTaskRequest createOutPaintingTaskRequest = new CreateOutPaintingTaskRequest();
+        createOutPaintingTaskRequest.getInput().setImageUrl(picture.getUrl());
+        createOutPaintingTaskRequest.setParameters(createPictureOutPaintingTaskDTO.getParameters());
+
+        // 调用api创建扩图任务
+        return aliYunAiApi.createOutPaintingTask(createOutPaintingTaskRequest);
+    }
 }
 
 

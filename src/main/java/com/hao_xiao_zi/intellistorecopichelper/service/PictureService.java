@@ -3,6 +3,7 @@ package com.hao_xiao_zi.intellistorecopichelper.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.hao_xiao_zi.intellistorecopichelper.api.aliyunai.model.CreateoutPaintingTaskResponse;
 import com.hao_xiao_zi.intellistorecopichelper.api.imagesearch.model.ImageSearchResult;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
@@ -58,4 +59,6 @@ public interface PictureService extends IService<Picture> {
     List<PictureVO> searchPictureByColor(SearchPictureByColorDTO searchPictureByColorDTO,User loginUser);
 
     void pictureEditByBatch(PictureEditByBatchDTO pictureEditByBatchDTO, User loginUser);
+
+    CreateoutPaintingTaskResponse createOutPaintingTask(CreatePictureOutPaintingTaskDTO createPictureOutPaintingTaskDTO, User loginUser);
 }
