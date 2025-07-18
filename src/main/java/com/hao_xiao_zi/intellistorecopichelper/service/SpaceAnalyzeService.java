@@ -1,13 +1,11 @@
 package com.hao_xiao_zi.intellistorecopichelper.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.SpaceAnalyzeDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.SpaceCategoryAnalyzeDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.SpaceUsageAnalyzeDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
+import com.hao_xiao_zi.intellistorecopichelper.model.entity.Space;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
-import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.SpaceCategoryAnalyzeVO;
-import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.SpaceUsageAnalyzeVO;
+import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.*;
 
 import java.util.List;
 
@@ -27,4 +25,12 @@ public interface SpaceAnalyzeService {
     SpaceUsageAnalyzeVO getSpaceUsageAnalyze(SpaceUsageAnalyzeDTO spaceUsageAnalyzeDTO, User loginUser);
 
     List<SpaceCategoryAnalyzeVO> getSpaceCategoryAnalyze(SpaceCategoryAnalyzeDTO spaceCategoryAnalyzeDTO, User loginUser);
+
+    List<SpaceTagAnalyzeVO> getSpaceTagAnalyze(SpaceTagAnalyzeDTO spaceTagAnalyzeDTO, User loginUser);
+
+    List<SpaceSizeAnalyzeVO> getSpaceSizeAnalyze(SpaceSizeAnalyzeDTO spaceSizeAnalyzeDTO, User loginUser);
+
+    List<SpaceUserAnalyzeVO> getSpaceUserAnalyze(SpaceUserAnalyzeDTO spaceUserAnalyzeDTO, User loginUser);
+
+    List<Space> getSpaceRankAnalyze(SpaceRankAnalyzeDTO spaceRankAnalyzeRequest, User loginUser);
 }

@@ -1,29 +1,27 @@
 package com.hao_xiao_zi.intellistorecopichelper.service.impl;
 
 import cn.hutool.core.util.NumberUtil;
+import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
 import com.hao_xiao_zi.intellistorecopichelper.mapper.PictureMapper;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.SpaceAnalyzeDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.SpaceCategoryAnalyzeDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.SpaceUsageAnalyzeDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Space;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
-import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.SpaceCategoryAnalyzeVO;
-import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.SpaceUsageAnalyzeVO;
+import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.*;
 import com.hao_xiao_zi.intellistorecopichelper.service.PictureService;
 import com.hao_xiao_zi.intellistorecopichelper.service.SpaceAnalyzeService;
 import com.hao_xiao_zi.intellistorecopichelper.service.SpaceService;
 import com.hao_xiao_zi.intellistorecopichelper.service.UserService;
+import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +31,7 @@ import java.util.stream.Collectors;
  * Date: 2025-07-17
  * Time: 20:11
  */
+@Service
 public class SpaceAnalyzeServiceImpl implements SpaceAnalyzeService {
 
     @Resource
@@ -151,4 +150,128 @@ public class SpaceAnalyzeServiceImpl implements SpaceAnalyzeService {
                     .build();
         }).collect(Collectors.toList());
     }
+
+    @Override
+    public List<SpaceTagAnalyzeVO> getSpaceTagAnalyze(SpaceTagAnalyzeDTO spaceTagAnalyzeDTO, User loginUser) {
+
+        // 参数校验和权限校验
+        checkSpaceAnalyzeAuth(spaceTagAnalyzeDTO, loginUser);
+
+        // 构建查询条件
+        QueryWrapper<Picture> queryWrapper = new QueryWrapper<>();
+        fillAnalyzeQueryWrapper(spaceTagAnalyzeDTO, queryWrapper);
+
+        // 查询所有符合条件的标签
+        queryWrapper.select("tags");
+        List<String> tagsJsonList = pictureService.getBaseMapper().selectObjs(queryWrapper)
+                .stream()
+                .filter(ObjUtil::isNotNull)
+                .map(Object::toString)
+                .collect(Collectors.toList());
+
+        // 合并所有标签并统计使用次数
+        Map<String, Long> tagCountMap = tagsJsonList.stream()
+                .flatMap(tagsJson -> JSONUtil.toList(tagsJson, String.class).stream())
+                .collect(Collectors.groupingBy(tag -> tag, Collectors.counting()));
+
+        // 按降序排序
+        return tagCountMap.entrySet().stream().map(entry -> {
+            String tag = entry.getKey();
+            Long count = entry.getValue();
+            return new SpaceTagAnalyzeVO(tag, count);
+        }).sorted(Comparator.comparingLong(SpaceTagAnalyzeVO::getCount).reversed()).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<SpaceSizeAnalyzeVO> getSpaceSizeAnalyze(SpaceSizeAnalyzeDTO spaceSizeAnalyzeDTO, User loginUser) {
+
+        // 参数校验和权限校验
+        checkSpaceAnalyzeAuth(spaceSizeAnalyzeDTO, loginUser);
+
+        // 构建查询条件
+        QueryWrapper<Picture> queryWrapper = new QueryWrapper<>();
+        fillAnalyzeQueryWrapper(spaceSizeAnalyzeDTO, queryWrapper);
+        queryWrapper.select("picSize");
+
+        // 查询所有符合条件的图片大小
+        List<Long> picSizes = pictureService.getBaseMapper().selectObjs(queryWrapper).stream()
+                .filter(ObjUtil::isNotNull)
+                .map(Object::toString)
+                .map(Long::parseLong)
+                .collect(Collectors.toList());
+
+        // 定义分段范围，注意使用有序 Map，统计每个分段内图片数量和总大小
+        Map<String, Long> sizeRanges = new LinkedHashMap<>();
+        sizeRanges.put("<100KB", picSizes.stream().filter(size -> size < 100 * 1024).count());
+        sizeRanges.put("100KB-500KB", picSizes.stream().filter(size -> size >= 100 * 1024 && size < 500 * 1024).count());
+        sizeRanges.put("500KB-1MB", picSizes.stream().filter(size -> size >= 500 * 1024 && size < 1 * 1024 * 1024).count());
+        sizeRanges.put(">1MB", picSizes.stream().filter(size -> size >= 1 * 1024 * 1024).count());
+
+        // 转化返回结果
+        return sizeRanges.entrySet().stream().map(entry -> {
+            String sizeRange = entry.getKey();
+            Long count = entry.getValue();
+            return new SpaceSizeAnalyzeVO(sizeRange, count);
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<SpaceUserAnalyzeVO> getSpaceUserAnalyze(SpaceUserAnalyzeDTO spaceUserAnalyzeDTO, User loginUser) {
+        
+        // 检查权限
+        checkSpaceAnalyzeAuth(spaceUserAnalyzeDTO, loginUser);
+
+        // 构造查询条件
+        QueryWrapper<Picture> queryWrapper = new QueryWrapper<>();
+        Long userId = spaceUserAnalyzeDTO.getUserId();
+        queryWrapper.eq(ObjUtil.isNotNull(userId), "userId", userId);
+        fillAnalyzeQueryWrapper(spaceUserAnalyzeDTO, queryWrapper);
+
+        // 分析维度：每日、每周、每月
+        String timeDimension = spaceUserAnalyzeDTO.getTimeDimension();
+        switch (timeDimension) {
+            case "day":
+                queryWrapper.select("DATE_FORMAT(createTime, '%Y-%m-%d') AS period", "COUNT(*) AS count");
+                break;
+            case "week":
+                queryWrapper.select("YEARWEEK(createTime) AS period", "COUNT(*) AS count");
+                break;
+            case "month":
+                queryWrapper.select("DATE_FORMAT(createTime, '%Y-%m') AS period", "COUNT(*) AS count");
+                break;
+            default:
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "不支持的时间维度");
+        }
+
+        // 分组和排序
+        queryWrapper.groupBy("period").orderByAsc("period");
+
+        // 查询结果并转换
+        List<Map<String, Object>> queryResult = pictureService.getBaseMapper().selectMaps(queryWrapper);
+        return queryResult.stream()
+                .map(result -> {
+                    String period = result.get("period").toString();
+                    Long count = ((Number) result.get("count")).longValue();
+                    return new SpaceUserAnalyzeVO(period, count);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Space> getSpaceRankAnalyze(SpaceRankAnalyzeDTO spaceRankAnalyzeDTO, User loginUser) {
+        ThrowUtils.throwIf(spaceRankAnalyzeDTO == null, ErrorCode.PARAMS_ERROR);
+
+        // 仅管理员可查看空间排行
+        ThrowUtils.throwIf(!userService.isAdmin(loginUser), ErrorCode.NO_AUTH_ERROR, "无权查看空间排行");
+
+        // 构造查询条件
+        QueryWrapper<Space> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("id", "spaceName", "userId", "totalSize")
+                .orderByDesc("totalSize")
+                .last("LIMIT " + spaceRankAnalyzeDTO.getTopN()); // 取前 N 名
+
+        // 查询结果
+        return spaceService.list(queryWrapper);
+    }
+
 }

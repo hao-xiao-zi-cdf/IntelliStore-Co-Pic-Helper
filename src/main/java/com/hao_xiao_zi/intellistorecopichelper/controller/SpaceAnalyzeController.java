@@ -4,11 +4,10 @@ import com.hao_xiao_zi.intellistorecopichelper.common.BaseResponse;
 import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.SpaceCategoryAnalyzeDTO;
-import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.SpaceUsageAnalyzeDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.analyze.*;
+import com.hao_xiao_zi.intellistorecopichelper.model.entity.Space;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
-import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.SpaceCategoryAnalyzeVO;
-import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.SpaceUsageAnalyzeVO;
+import com.hao_xiao_zi.intellistorecopichelper.model.vo.analyze.*;
 import com.hao_xiao_zi.intellistorecopichelper.service.SpaceAnalyzeService;
 import com.hao_xiao_zi.intellistorecopichelper.service.UserService;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,6 +53,35 @@ public class SpaceAnalyzeController {
         ThrowUtils.throwIf(spaceCategoryAnalyzeRequest == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
         List<SpaceCategoryAnalyzeVO> resultList = spaceAnalyzeService.getSpaceCategoryAnalyze(spaceCategoryAnalyzeRequest, loginUser);
+        return ResultUtils.success(resultList);
+    }
+
+
+    @PostMapping("/tag")
+    public BaseResponse<List<SpaceTagAnalyzeVO>> getSpaceTagAnalyze(@RequestBody SpaceTagAnalyzeDTO spaceTagAnalyzeDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        List<SpaceTagAnalyzeVO> resultList = spaceAnalyzeService.getSpaceTagAnalyze(spaceTagAnalyzeDTO, loginUser);
+        return ResultUtils.success(resultList);
+    }
+
+    @PostMapping("/size")
+    public BaseResponse<List<SpaceSizeAnalyzeVO>> getSpaceSizeAnalyze(@RequestBody SpaceSizeAnalyzeDTO spaceSizeAnalyzeDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        List<SpaceSizeAnalyzeVO> resultList = spaceAnalyzeService.getSpaceSizeAnalyze(spaceSizeAnalyzeDTO, loginUser);
+        return ResultUtils.success(resultList);
+    }
+
+    @PostMapping("/user")
+    public BaseResponse<List<SpaceUserAnalyzeVO>> getSpaceUserAnalyze(@RequestBody SpaceUserAnalyzeDTO spaceUserAnalyzeDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        List<SpaceUserAnalyzeVO> resultList = spaceAnalyzeService.getSpaceUserAnalyze(spaceUserAnalyzeDTO, loginUser);
+        return ResultUtils.success(resultList);
+    }
+
+    @PostMapping("/rank")
+    public BaseResponse<List<Space>> getSpaceRankAnalyze(@RequestBody SpaceRankAnalyzeDTO spaceRankAnalyzeDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        List<Space> resultList = spaceAnalyzeService.getSpaceRankAnalyze(spaceRankAnalyzeDTO, loginUser);
         return ResultUtils.success(resultList);
     }
 
