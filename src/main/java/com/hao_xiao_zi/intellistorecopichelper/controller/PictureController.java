@@ -3,6 +3,7 @@ package com.hao_xiao_zi.intellistorecopichelper.controller;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpRequest;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hao_xiao_zi.intellistorecopichelper.annotation.AuthCheck;
 import com.hao_xiao_zi.intellistorecopichelper.api.aliyunai.AliYunAiApi;
@@ -19,6 +20,7 @@ import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
+import com.hao_xiao_zi.intellistorecopichelper.model.vo.PictureTagCategory;
 import com.hao_xiao_zi.intellistorecopichelper.model.vo.PictureVO;
 import com.hao_xiao_zi.intellistorecopichelper.model.vo.UserVO;
 import com.hao_xiao_zi.intellistorecopichelper.service.PictureService;
@@ -32,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -181,6 +184,12 @@ public class PictureController {
             return ResultUtils.success(new PageResult(0, Collections.emptyList()));
         }
 
+        // 将tags转化为JSON字符串
+        picturePage.getRecords().forEach(picture -> {
+            String tags = picture.getTags();
+            picture.setTags(tags != null ? "[" + tags + "]" : "[]");
+        });
+
         // 如果查询结果不为空，返回包含总记录数和记录列表的PageResult对象
         return ResultUtils.success(new PageResult(picturePage.getTotal(), picturePage.getRecords()));
     }
@@ -226,6 +235,17 @@ public class PictureController {
         }
         return ResultUtils.success(new PageResult(pictureVoPage.getTotal(), pictureVoPage.getRecords()));
     }
+
+    @GetMapping("/tag_category")
+    public BaseResponse<PictureTagCategory> listPictureTagCategory() {
+        PictureTagCategory pictureTagCategory = new PictureTagCategory();
+        List<String> tagList = Arrays.asList("热门", "搞笑", "生活", "高清", "艺术", "校园", "背景", "简历", "创意");
+        List<String> categoryList = Arrays.asList("模板", "电商", "表情包", "素材", "海报");
+        pictureTagCategory.setTagList(tagList);
+        pictureTagCategory.setCategoryList(categoryList);
+        return ResultUtils.success(pictureTagCategory);
+    }
+
 
     /**
      *

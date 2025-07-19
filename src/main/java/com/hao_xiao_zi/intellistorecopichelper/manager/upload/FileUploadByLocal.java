@@ -30,9 +30,9 @@ public class FileUploadByLocal extends FileUploadTemplate{
 
         // 限制上传图片大小
         MultipartFile multipartFile = (MultipartFile)inputSource;
-        final long maxSize = 1024 * 1024L;
+        final long maxSize = 10 * 1024 * 1024L;
         long imgSize = multipartFile.getSize();
-        ThrowUtils.throwIf(imgSize > 2 * maxSize, new BusinessException(ErrorCode.PARAMS_ERROR, "图片大小的不超过2MB"));
+        ThrowUtils.throwIf(imgSize > 2 * maxSize, new BusinessException(ErrorCode.PARAMS_ERROR, "图片大小的不超过10MB"));
 
         // 限制上传文件后缀名
         final List<String> suffixList = Arrays.asList("jpeg", "jpg", "png", "webp");

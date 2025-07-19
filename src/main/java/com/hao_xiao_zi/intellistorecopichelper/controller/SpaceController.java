@@ -1,6 +1,10 @@
 package com.hao_xiao_zi.intellistorecopichelper.controller;
 
+import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hao_xiao_zi.intellistorecopichelper.common.BaseResponse;
+import com.hao_xiao_zi.intellistorecopichelper.common.PageResult;
 import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
@@ -10,6 +14,7 @@ import com.hao_xiao_zi.intellistorecopichelper.model.entity.Space;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
 import com.hao_xiao_zi.intellistorecopichelper.model.enums.SpaceLevelEnum;
 import com.hao_xiao_zi.intellistorecopichelper.model.vo.SpaceVO;
+import com.hao_xiao_zi.intellistorecopichelper.model.vo.UserVO;
 import com.hao_xiao_zi.intellistorecopichelper.service.SpaceService;
 import com.hao_xiao_zi.intellistorecopichelper.service.UserService;
 import io.swagger.annotations.Api;
@@ -20,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -104,4 +110,30 @@ public class SpaceController {
         return ResultUtils.success(spaceLevelList);
     }
 
+    @GetMapping("/list")
+    @ApiOperation("查询空间列表（管理员）")
+    public BaseResponse<PageResult> listSpace(SpaceQueryDTO spaceQueryDTO) {
+        Page<SpaceVO> spaceVoPage = (Page<SpaceVO>)spaceService.spacePageQuery(spaceQueryDTO);
+        if(spaceVoPage.getTotal() == 0){
+            return ResultUtils.success(new PageResult(0, Collections.emptyList()));
+        }
+        return ResultUtils.success(new PageResult(spaceVoPage.getTotal(), spaceVoPage.getRecords()));
+    }
+
+    @GetMapping("/{id}")
+    @ApiOperation("查询空间")
+    public BaseResponse<SpaceVO> getSpaceById(@PathVariable Long id) {
+        Space space = spaceService.getSpaceById(id);
+        SpaceVO spaceVO = SpaceVO.objToVo(space);
+        // 填充用户信息
+        spaceVO.setUser(BeanUtil.copyProperties(userService.getUserById(spaceVO.getUserId()), UserVO.class));
+        return ResultUtils.success(spaceVO);
+    }
+
+    @GetMapping("/my")
+    @ApiOperation("查询我的空间（普通用户）")
+    public BaseResponse<SpaceVO> getMySpace(SpaceQueryByUserDTO spaceQueryByUserDTO, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(spaceService.spacePageQueryByUserId(spaceQueryByUserDTO, loginUser));
+    }
 }

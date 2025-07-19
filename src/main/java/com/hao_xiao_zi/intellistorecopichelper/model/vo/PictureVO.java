@@ -149,13 +149,16 @@ public class PictureVO implements Serializable {
 
         String tags = picture.getTags();
 
+
         if (StrUtil.isBlank(tags)) {
             // 如果为空、null 或空白字符，设为空列表
             pictureVO.setTags(Collections.emptyList());
         } else {
             try {
                 // 安全解析 JSON 字符串
-                pictureVO.setTags(JSONUtil.toList(tags, String.class));
+                // 补全为合法 JSON 数组格式
+                String jsonArray = "[" + tags + "]";
+                pictureVO.setTags(JSONUtil.toList(jsonArray, String.class));
             } catch (Exception e) {
                 pictureVO.setTags(Collections.emptyList());
             }

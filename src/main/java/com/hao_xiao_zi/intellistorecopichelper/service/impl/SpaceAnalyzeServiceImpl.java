@@ -140,6 +140,8 @@ public class SpaceAnalyzeServiceImpl implements SpaceAnalyzeService {
         // 查询并转换结果
         List<Map<String, Object>> result = pictureService.getBaseMapper().selectMaps(queryWrapper);
         return result.stream().map(map -> {
+            // 处理可以为null的字段
+            map.putIfAbsent("category", "未分类");
             String category = map.get("category").toString();
             Long count = Long.parseLong(map.get("count").toString());
             Long totalSize = Long.parseLong(map.get("totalSize").toString());
@@ -171,8 +173,23 @@ public class SpaceAnalyzeServiceImpl implements SpaceAnalyzeService {
 
         // 合并所有标签并统计使用次数
         Map<String, Long> tagCountMap = tagsJsonList.stream()
-                .flatMap(tagsJson -> JSONUtil.toList(tagsJson, String.class).stream())
+                .flatMap(tagsJson -> {
+                    String jsonToParse = tagsJson;
+                    // 如果不是标准JSON数组格式，添加方括号
+                    if (!tagsJson.trim().startsWith("[") && !tagsJson.trim().endsWith("]")) {
+                        jsonToParse = "[" + tagsJson + "]";
+                    }
+                    try {
+                        return JSONUtil.toList(jsonToParse, String.class).stream();
+                    } catch (Exception e) {
+                        // JSON解析失败时的降级处理
+                        return Arrays.stream(tagsJson.split(","))
+                                .map(tag -> tag.trim().replaceAll("^\"|\"$", ""))
+                                .filter(tag -> !tag.isEmpty());
+                    }
+                })
                 .collect(Collectors.groupingBy(tag -> tag, Collectors.counting()));
+
 
         // 按降序排序
         return tagCountMap.entrySet().stream().map(entry -> {

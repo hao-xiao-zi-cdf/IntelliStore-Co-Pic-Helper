@@ -34,7 +34,7 @@ public class PictureEditByBatchDTO implements Serializable {
     /**
      * 标签
      */
-    private List<String> tag;
+    private List<String> tags;
 
     /**
      * 命名规则

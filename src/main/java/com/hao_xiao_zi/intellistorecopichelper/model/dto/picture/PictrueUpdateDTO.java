@@ -45,6 +45,11 @@ public class PictrueUpdateDTO implements Serializable {
     private String category;
 
     /**
+     * 空间id
+     */
+    private Long spaceId;
+
+    /**
      * 标签
      */
     private List<String> tags;
