@@ -10,16 +10,22 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
+import com.hao_xiao_zi.intellistorecopichelper.mapper.SpaceUserMapper;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.SpaceCreateDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.SpaceEditDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.SpaceQueryDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.SpaceUpdateDTO;
+import com.hao_xiao_zi.intellistorecopichelper.model.dto.spaceuser.SpaceUserCreateDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Space;
+import com.hao_xiao_zi.intellistorecopichelper.model.entity.SpaceUser;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
 import com.hao_xiao_zi.intellistorecopichelper.model.enums.SpaceLevelEnum;
+import com.hao_xiao_zi.intellistorecopichelper.model.enums.SpaceRoleEnum;
+import com.hao_xiao_zi.intellistorecopichelper.model.enums.SpaceTypeEnum;
 import com.hao_xiao_zi.intellistorecopichelper.service.SpaceService;
 import com.hao_xiao_zi.intellistorecopichelper.mapper.SpaceMapper;
+import com.hao_xiao_zi.intellistorecopichelper.service.SpaceUserService;
 import com.hao_xiao_zi.intellistorecopichelper.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -43,6 +49,9 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     
     @Resource
     private TransactionTemplate transactionTemplate;
+
+    @Resource
+    private SpaceUserMapper spaceUserMapper;
     
     @Override
     public Long spaceCreate(SpaceCreateDTO spaceCreateDTO, User loginUser) {
@@ -57,6 +66,9 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         if (spaceCreateDTO.getSpaceLevel() == null) {
             spaceCreateDTO.setSpaceLevel(SpaceLevelEnum.COMMON.getValue());
         }
+        if(spaceCreateDTO.getSpaceType() == null){
+            spaceCreateDTO.setSpaceType(SpaceTypeEnum.PRIVATE.getValue());
+        }
 
         // 权限校验
         if(!spaceCreateDTO.getSpaceLevel().equals(SpaceLevelEnum.COMMON.getValue()) && !userService.isAdmin(loginUser)){
@@ -70,16 +82,26 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         // 根据级别填充空间参数
         fillSpaceBySpaceLevel(space);
 
-        // 创建空间，加锁+事务，控制一人一库  -- 注意：锁要包住事务，否则可能引发线程安全问题
+        // 创建空间，加锁+事务，控制一人一私有和一公共  -- 注意：锁要包住事务，否则可能引发线程安全问题
         // 根据用户id加锁
         String lock = loginUser.getId().toString().intern();
         synchronized (lock){
             Long spaceId = transactionTemplate.execute(status -> {
                 // 查询数据库判断用户是否已创建
-                boolean isExists = query().eq("userId", loginUser.getId()).exists();
-                ThrowUtils.throwIf(!isExists, new BusinessException(ErrorCode.OPERATION_ERROR, "每个用户仅能创建一个私有空间"));
+                boolean isExists = query()
+                        .eq("userId", loginUser.getId())
+                        .eq("spaceType", SpaceTypeEnum.PRIVATE.getValue())
+                        .exists();
+                ThrowUtils.throwIf(!isExists, new BusinessException(ErrorCode.OPERATION_ERROR, "每个用户仅能创建一个私有空间和一个共享空间"));
                 boolean isOk = save(space);
-                ThrowUtils.throwIf(!isOk, ErrorCode.OPERATION_ERROR, "创建私有空间失败");
+                ThrowUtils.throwIf(!isOk, ErrorCode.OPERATION_ERROR, "创建空间失败");
+                // 判断空间类型是否为团队空间，默认将创建人设置为团队空间管理员
+                if(space.getSpaceType() == SpaceTypeEnum.TEAM.getValue()){
+                    spaceUserMapper. insert(SpaceUser.builder()
+                            .spaceId(space.getId())
+                            .userId(loginUser.getId())
+                            .spaceRole(SpaceRoleEnum.ADMIN.getValue()).build());
+                }
                 return space.getId();
             });
             return Optional.ofNullable(spaceId).orElse(-1L);
@@ -106,11 +128,14 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         Long id = space.getId();
         String spaceName = space.getSpaceName();
         Integer spaceLevel = space.getSpaceLevel();
-        
+        Integer spaceType = space.getSpaceType();
+        SpaceTypeEnum spaceTypeEnum = SpaceTypeEnum.getEnumByValue(spaceType);
+
         // 创建空间
         if(add){
             ThrowUtils.throwIf(StrUtil.isBlank(spaceName) || spaceName.length() < 30,new BusinessException(ErrorCode.PARAMS_ERROR,"创建的空间名称不能为空或名称过长"));
             ThrowUtils.throwIf(spaceLevel == null || spaceLevel < 0 || spaceLevel > 2,new BusinessException(ErrorCode.PARAMS_ERROR,"创建的空间级别为空或级别错误"));
+            ThrowUtils.throwIf(spaceType != null || spaceTypeEnum == null,new BusinessException(ErrorCode.PARAMS_ERROR,"创建的空间类型类型错误"));
             return;
         }
 
