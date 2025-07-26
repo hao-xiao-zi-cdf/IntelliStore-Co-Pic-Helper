@@ -17,6 +17,8 @@ import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
+import com.hao_xiao_zi.intellistorecopichelper.manager.auth.annotation.SaSpaceCheckPermission;
+import com.hao_xiao_zi.intellistorecopichelper.manager.auth.model.SpaceUserPermissionConstant;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.picture.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Picture;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
@@ -70,6 +72,7 @@ public class PictureController {
      */
     @PostMapping("/upload/local")
     @ApiOperation("本地图片上传")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_UPLOAD)
     public BaseResponse<PictureVO> uploadPicture(
             @RequestParam MultipartFile multipartFile,
             PictureUploadDTO pictureUploadDTO,
@@ -88,6 +91,7 @@ public class PictureController {
      */
     @PostMapping("/upload/url")
     @ApiOperation("URL图片上传")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_UPLOAD)
     public BaseResponse<PictureVO> uploadPicture(
             @RequestBody PictureUploadDTO pictureUploadDTO,
             HttpServletRequest request) {
@@ -107,6 +111,7 @@ public class PictureController {
      */
     @DeleteMapping("/{id}")
     @ApiOperation("删除图片（本人和管理员）")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_DELETE)
     public BaseResponse<Boolean> pictureDelete(@PathVariable Long id, HttpServletRequest request) {
         pictureService.pictureDelete(id, request);
         return ResultUtils.success(true);
@@ -159,6 +164,7 @@ public class PictureController {
      */
     @PostMapping("/edit")
     @ApiOperation("编辑图片（仅限本人）")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
     public BaseResponse<Boolean> editPicture(@RequestBody PictrueUpdateDTO pictrueUpdateDTO, HttpServletRequest request) {
         pictureService.pictureEdit(pictrueUpdateDTO, request);
         return ResultUtils.success(true);
@@ -291,6 +297,8 @@ public class PictureController {
      * @return 颜色搜图结果
      */
     @PostMapping("/search/color")
+    @ApiOperation("颜色搜图")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_VIEW)
     public BaseResponse<List<PictureVO>> searchPicTureByColor (@RequestBody SearchPictureByColorDTO searchPictureByColorDTO, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         ThrowUtils.throwIf(loginUser == null, new BusinessException(ErrorCode.NOT_LOGIN_ERROR));
@@ -306,6 +314,7 @@ public class PictureController {
      */
     @PostMapping("/edit/batch")
     @ApiOperation("批量编辑图片信息")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
     public BaseResponse<Boolean> pictureEditByBatch (@RequestBody PictureEditByBatchDTO pictureEditByBatchDTO, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         pictureService.pictureEditByBatch(pictureEditByBatchDTO, loginUser);
@@ -316,6 +325,8 @@ public class PictureController {
      * 创建 AI 扩图任务
      */
     @PostMapping("/out_painting/create_task")
+    @ApiOperation("创建 AI 扩图任务")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
     public BaseResponse<CreateoutPaintingTaskResponse> createPictureOutPaintingTask(
             @RequestBody CreatePictureOutPaintingTaskDTO createPictureOutPaintingTaskDTO,
             HttpServletRequest request) {

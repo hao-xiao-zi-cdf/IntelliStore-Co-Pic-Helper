@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.annotation.*;
 import java.io.Serializable;
 import java.util.Date;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 用户
@@ -15,6 +17,8 @@ import lombok.Data;
  */
 @TableName(value = "user")
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class User implements Serializable {
 

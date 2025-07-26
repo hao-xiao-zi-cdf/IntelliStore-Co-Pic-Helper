@@ -9,6 +9,7 @@ import com.hao_xiao_zi.intellistorecopichelper.common.ResultUtils;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
+import com.hao_xiao_zi.intellistorecopichelper.manager.auth.SpaceUserAuthManager;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.Space;
 import com.hao_xiao_zi.intellistorecopichelper.model.entity.User;
@@ -47,6 +48,9 @@ public class SpaceController {
 
     @Resource
     public UserService userService;
+
+    @Resource
+    public SpaceUserAuthManager spaceUserAuthManager;
 
     @PostMapping
     @ApiOperation("创建空间")
@@ -122,11 +126,12 @@ public class SpaceController {
 
     @GetMapping("/{id}")
     @ApiOperation("查询空间")
-    public BaseResponse<SpaceVO> getSpaceById(@PathVariable Long id) {
+    public BaseResponse<SpaceVO> getSpaceById(@PathVariable Long id,HttpServletRequest request) {
         Space space = spaceService.getSpaceById(id);
         SpaceVO spaceVO = SpaceVO.objToVo(space);
-        // 填充用户信息
+        // 填充用户信息和权限信息
         spaceVO.setUser(BeanUtil.copyProperties(userService.getUserById(spaceVO.getUserId()), UserVO.class));
+        spaceVO.setPermissionList(spaceUserAuthManager.getPermissionList(space, userService.getLoginUser(request)));
         return ResultUtils.success(spaceVO);
     }
 

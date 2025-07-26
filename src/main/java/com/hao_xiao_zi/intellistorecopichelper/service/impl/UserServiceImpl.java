@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
+import com.hao_xiao_zi.intellistorecopichelper.manager.auth.StpKit;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserCreateDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserEditDTO;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.user.UserQueryDTO;
@@ -112,13 +113,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户不存在或密码错误");
         }
 
-        // 4.保存到session中
+        // 4.保存到session
         HttpSession session = request.getSession();
         session.setAttribute(USER_LOGIN_STATUS, user);
-        UserVO userVO = new UserVO();
-        BeanUtil.copyProperties(user,userVO);
+
+        // 记录用户登录态到 Sa-token，便于空间鉴权时使用
+        StpKit.SPACE.login(user.getId());
+        StpKit.SPACE.getSession().set(USER_LOGIN_STATUS, user);
 
         // 5.返回脱敏后的用户信息
+        UserVO userVO = new UserVO();
+        BeanUtil.copyProperties(user,userVO);
         return userVO;
     }
 

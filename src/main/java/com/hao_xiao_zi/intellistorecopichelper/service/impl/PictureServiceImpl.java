@@ -1,5 +1,6 @@
 package com.hao_xiao_zi.intellistorecopichelper.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
@@ -27,6 +28,10 @@ import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
 import com.hao_xiao_zi.intellistorecopichelper.manager.CosManager;
+import com.hao_xiao_zi.intellistorecopichelper.manager.auth.SpaceUserAuthManager;
+import com.hao_xiao_zi.intellistorecopichelper.manager.auth.StpKit;
+import com.hao_xiao_zi.intellistorecopichelper.manager.auth.annotation.SaSpaceCheckPermission;
+import com.hao_xiao_zi.intellistorecopichelper.manager.auth.model.SpaceUserPermissionConstant;
 import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadByLocal;
 import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadTemplate;
 import com.hao_xiao_zi.intellistorecopichelper.manager.upload.FileUploadURL;
@@ -104,6 +109,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private AliYunAiApi aliYunAiApi;
 
+    @Resource
+    private SpaceUserAuthManager spaceUserAuthManager;
+
 
 
     // 使用 Caffeine 构建一个本地缓存，用于存储字符串键值对
@@ -138,10 +146,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (spaceId != null) {
             space = spaceService.getSpaceById(spaceId);
             ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
-            // 必须空间创建人才能上传
-            if (!loginUser.getId().equals(space.getUserId())) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
-            }
+//            已改为注解权限校验
+//            // 必须空间创建人才能上传
+//            if (!loginUser.getId().equals(space.getUserId())) {
+//                throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "没有空间权限");
+//            }
             // 校验额度
             if(space.getTotalCount() > space.getMaxCount()){
                 throw new BusinessException(ErrorCode.OPERATION_ERROR,"空间条数不足");
@@ -158,8 +167,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             Picture picture = getById(pictureId);
             ThrowUtils.throwIf(ObjectUtil.isEmpty(picture), new BusinessException(ErrorCode.PARAMS_ERROR, "更新的图片不存在"));
 
-            // 权限校验（本人或管理员） ->  管理员在管理页面修改用户上传图片
-            ThrowUtils.throwIf(!picture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser),new BusinessException(ErrorCode.NO_AUTH_ERROR));
+//            已改为注解权限校验
+//            // 权限校验（本人或管理员） ->  管理员在管理页面修改用户上传图片
+//            ThrowUtils.throwIf(!picture.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser),new BusinessException(ErrorCode.NO_AUTH_ERROR));
             // 校验空间是否一致
             // 没传 spaceId，则复用原有图片的 spaceId
             if (spaceId == null) {
@@ -281,9 +291,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture picture = getById(id);
         ThrowUtils.throwIf(picture == null, new BusinessException(ErrorCode.PARAMS_ERROR, "图片资源不存在"));
 
-        // 判断是否为本人或管理员操作
-        User loginUser = userService.getLoginUser(request);
-        checkSpaceAuth(picture, loginUser);
+//        // 已改为注解权限校验
+//        // 判断是否为本人或管理员操作
+//        User loginUser = userService.getLoginUser(request);
+//        checkSpaceAuth(picture, loginUser);
 
         // 开启事务
         transactionTemplate.execute(status -> {
@@ -353,10 +364,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
         // 空间权限校验
         Long spaceId = picture.getSpaceId();
-        // 私有空间
+        // 私人和团队空间
         if (spaceId != null) {
-            // 仅空间创建人可查看
-            ThrowUtils.throwIf(!picture.getUserId().equals(loginUser.getId()), new BusinessException(ErrorCode.NO_AUTH_ERROR));
+            // 仅有权限的人可查看
+            boolean isHasPermission = StpUtil.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
+            ThrowUtils.throwIf(!isHasPermission, new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限"));
         }else {
             // 公共空间：未过审或拒绝图片查询只能是图片创建人或管理员
             if (picture.getReviewStatus() != PictureReviewStatusEnum.PASS.getValue()) {
@@ -367,9 +379,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 图片信息脱敏
         PictureVO pictureVO = PictureVO.objToVo(picture);
 
-        // 设置创建者信息
-        User user = userService.getById(picture.getUserId());
-        pictureVO.setUser(BeanUtil.copyProperties(user, UserVO.class));
+        // 设置创建者信息和权限列表
+        List<String> permissionList = spaceUserAuthManager.getPermissionList(spaceService.getById(spaceId), loginUser);
+        pictureVO.setPermissionList(permissionList);
+        pictureVO.setUser(BeanUtil.copyProperties(userService.getById(picture.getUserId()), UserVO.class));
         return pictureVO;
     }
 
@@ -426,8 +439,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture picture = query().eq("id", pictureId).one();
         ThrowUtils.throwIf(picture == null, new BusinessException(ErrorCode.PARAMS_ERROR, "图片资源不存在"));
 
-        // 权限校验
-        checkSpaceAuth(picture, userService.getLoginUser(request));
+//        // 已改为注解权限校验
+//        // 权限校验
+//        checkSpaceAuth(picture, userService.getLoginUser(request));
 
         // 获取更新条件构造器
         UpdateWrapper<Picture> wrapper = getPictureUpdateWrapper(pictrueUpdateDTO);
@@ -503,25 +517,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Override
     public IPage<PictureVO> picturePageVoQuery(PictureQueryDTO pictureQueryDTO,HttpServletRequest request) {
 
-        Long spaceId = pictureQueryDTO.getSpaceId();
-        User loginUser = userService.getLoginUser(request);
-        ThrowUtils.throwIf(loginUser == null,new BusinessException(ErrorCode.NOT_LOGIN_ERROR));
-
         // 传参代表查询私有空间的图片，无需设置审核条件
-        Page<Picture> picturePage;
-        if (spaceId != null) {
-            Space space = spaceService.getSpaceById(spaceId);
-            ThrowUtils.throwIf(space == null,new BusinessException(ErrorCode.NOT_FOUND_ERROR,"空间资源不存在"));
-            ThrowUtils.throwIf(!space.getUserId().equals(loginUser.getId()),new BusinessException(ErrorCode.NO_AUTH_ERROR,"非空间创建人，无权限"));
-        } else {//查看公共图库
-            // 设置查询条件：未过审,重置其他审核条件
-            pictureQueryDTO.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
-            pictureQueryDTO.setReviewerId(null);
-            pictureQueryDTO.setReviewMessage(null);
-            pictureQueryDTO.setNullSpaceId(true);
-        }
-
-        picturePage = (Page<Picture>) picturePageQuery(pictureQueryDTO);
+        Page<Picture> picturePage = (Page<Picture>) picturePageQuery(pictureQueryDTO);
 
         // 对象拷贝，获取用户ids
         Page<PictureVO> pictureVOPage = new Page<>(pictureQueryDTO.getCurrent(), pictureQueryDTO.getPageSize());
@@ -723,6 +720,21 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Override
     public IPage<PictureVO> picturePageVoQueryByCache(PictureQueryDTO pictureQueryDTO,HttpServletRequest request) {
 
+        Long spaceId = pictureQueryDTO.getSpaceId();
+        ThrowUtils.throwIf(userService.getLoginUser(request) == null,new BusinessException(ErrorCode.NOT_LOGIN_ERROR));
+
+        if (spaceId != null) { //私人或团队空间
+            ThrowUtils.throwIf(spaceService.getById(spaceId) == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+            boolean hasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
+            ThrowUtils.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR, "无权限");
+        } else {//查看公共图库
+            // 设置查询条件：未过审,重置其他审核条件
+            pictureQueryDTO.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+            pictureQueryDTO.setReviewerId(null);
+            pictureQueryDTO.setReviewMessage(null);
+            pictureQueryDTO.setNullSpaceId(true);
+        }
+
         // 将查询条件转化为JSON字符串
         String jsonStr = JSONUtil.toJsonStr(pictureQueryDTO);
 
@@ -798,8 +810,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Space space = spaceService.getSpaceById(spaceId);
         ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR);
 
-        // 空间权限校验
-        ThrowUtils.throwIf(!loginUser.getId().equals(space.getUserId()),ErrorCode.NO_AUTH_ERROR);
+//        // 已改为注解权限校验
+//        // 空间权限校验
+//        ThrowUtils.throwIf(!loginUser.getId().equals(space.getUserId()),ErrorCode.NO_AUTH_ERROR);
 
         // 查询空间的所有颜色不为空的图片
         QueryWrapper<Picture> wrapper = new QueryWrapper<>();
@@ -853,12 +866,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
         ThrowUtils.throwIf(CollUtil.isEmpty(idList) || spaceId == null || spaceId < 0, ErrorCode.PARAMS_ERROR);
 
-        // 空间权限校验
-        Space space = spaceService.getById(spaceId);
-        ThrowUtils.throwIf(ObjectUtil.isEmpty(space), ErrorCode.NOT_FOUND_ERROR,"空间不存在");
-        if(!space.getUserId().equals(loginUser.getId())){
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"非空间创建人，无权限");
-        }
+//        // 已改为注解权限校验
+//        // 空间权限校验
+//        Space space = spaceService.getById(spaceId);
+//        ThrowUtils.throwIf(ObjectUtil.isEmpty(space), ErrorCode.NOT_FOUND_ERROR,"空间不存在");
+//        if(!space.getUserId().equals(loginUser.getId())){
+//            throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"非空间创建人，无权限");
+//        }
 
         // 根据idList和spaceId获取编辑图片列表,只查询出id和space_id,优化查询性能
         List<Picture> pictureList = list(new QueryWrapper<Picture>().
@@ -929,8 +943,10 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 空间权限校验
         Picture picture = getPictureById(pictureId);
         ThrowUtils.throwIf(ObjectUtil.isEmpty(picture), ErrorCode.NOT_FOUND_ERROR,"图片资源不存在");
-        Space space = spaceService.getById(picture.getSpaceId());
-        ThrowUtils.throwIf(space != null && !Objects.equals(space.getUserId(), loginUser.getId()),new BusinessException(ErrorCode.NO_AUTH_ERROR,"非空间创建人，没有权限"));
+
+//        // 已改为注解权限校验
+//        Space space = spaceService.getById(picture.getSpaceId());
+//        ThrowUtils.throwIf(space != null && !Objects.equals(space.getUserId(), loginUser.getId()),new BusinessException(ErrorCode.NO_AUTH_ERROR,"非空间创建人，没有权限"));
 
         // 封装参数
         CreateOutPaintingTaskRequest createOutPaintingTaskRequest = new CreateOutPaintingTaskRequest();
