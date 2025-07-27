@@ -112,8 +112,8 @@ public class PictureController {
     @DeleteMapping("/{id}")
     @ApiOperation("删除图片（本人和管理员）")
     @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_DELETE)
-    public BaseResponse<Boolean> pictureDelete(@PathVariable Long id, HttpServletRequest request) {
-        pictureService.pictureDelete(id, request);
+    public BaseResponse<Boolean> pictureDelete(@PathVariable Long id, @PathVariable Long spaceId, HttpServletRequest request) {
+        pictureService.pictureDelete(id, spaceId, request);
         return ResultUtils.success(true);
     }
 
@@ -138,8 +138,8 @@ public class PictureController {
      */
     @GetMapping("/vo/{id}")
     @ApiOperation("查询图片信息（普通用户）")
-    public BaseResponse<PictureVO> getPictureVoById(@PathVariable Long id, HttpServletRequest request) {
-        PictureVO pictureVo = pictureService.getPictureVOById(id, request);
+    public BaseResponse<PictureVO> getPictureVoById(@PathVariable Long id, @PathVariable Long spaceId, HttpServletRequest request) {
+        PictureVO pictureVo = pictureService.getPictureVOById(id, spaceId,request);
         return ResultUtils.success(pictureVo);
     }
 

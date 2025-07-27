@@ -12,6 +12,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hao_xiao_zi.intellistorecopichelper.exception.BusinessException;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ErrorCode;
 import com.hao_xiao_zi.intellistorecopichelper.exception.ThrowUtils;
+import com.hao_xiao_zi.intellistorecopichelper.manager.sharding.DynamicShardingManager;
 import com.hao_xiao_zi.intellistorecopichelper.mapper.SpaceUserMapper;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.space.*;
 import com.hao_xiao_zi.intellistorecopichelper.model.dto.spaceuser.SpaceUserCreateDTO;
@@ -29,6 +30,7 @@ import com.hao_xiao_zi.intellistorecopichelper.mapper.SpaceMapper;
 import com.hao_xiao_zi.intellistorecopichelper.service.SpaceUserService;
 import com.hao_xiao_zi.intellistorecopichelper.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -54,7 +56,12 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
     private TransactionTemplate transactionTemplate;
 
     @Resource
-    private SpaceUserMapper spaceUserMapper;
+    @Lazy
+    private SpaceUserService spaceUserService;
+
+    @Resource
+    @Lazy
+    private DynamicShardingManager dynamicShardingManager;
     
     @Override
     public Long spaceCreate(SpaceCreateDTO spaceCreateDTO, User loginUser) {
@@ -101,11 +108,16 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
                 ThrowUtils.throwIf(!isOk, ErrorCode.OPERATION_ERROR, "创建空间失败");
                 // 判断空间类型是否为团队空间，默认将创建人设置为团队空间管理员
                 if(space.getSpaceType() == SpaceTypeEnum.TEAM.getValue()){
-                    spaceUserMapper. insert(SpaceUser.builder()
+                    boolean isSave = spaceUserService.save(SpaceUser.builder()
                             .spaceId(space.getId())
                             .userId(loginUser.getId())
                             .spaceRole(SpaceRoleEnum.ADMIN.getValue()).build());
+                    ThrowUtils.throwIf(!isSave, ErrorCode.OPERATION_ERROR, "创建空间失败");
                 }
+                // 创建分表
+                dynamicShardingManager.createSpacePictureTable(space);
+
+                // 返回空间id
                 return space.getId();
             });
             return Optional.ofNullable(spaceId).orElse(-1L);

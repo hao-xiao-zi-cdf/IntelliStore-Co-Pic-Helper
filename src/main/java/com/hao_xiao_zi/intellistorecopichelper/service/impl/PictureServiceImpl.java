@@ -212,7 +212,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         picture.setPicScale(uploadPictureResult.getPicScale());
         picture.setPicFormat(uploadPictureResult.getPicFormat());
         picture.setUserId(userService.getLoginUser(request).getId());
-        picture.setSpaceId(spaceId);
+        picture.setSpaceId(spaceId != null ? spaceId : 0L);
         // 设置图片颜色
         picture.setPicColor(uploadPictureResult.getPicColor());
         picture.setSpaceId(pictureUploadDTO.getSpaceId());
@@ -283,7 +283,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      * @param request 用于获取当前登录用户信息
      */
     @Override
-    public void pictureDelete(Long id, HttpServletRequest request) {
+    public void pictureDelete(Long id, Long spaceId, HttpServletRequest request) {
         // 参数校验
         ThrowUtils.throwIf(ObjectUtil.hasEmpty(id), new BusinessException(ErrorCode.PARAMS_ERROR));
 
@@ -298,11 +298,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
         // 开启事务
         transactionTemplate.execute(status -> {
-            // 删除图片
-            boolean isOk = removeById(id);
+            // 构造 QueryWrapper
+            QueryWrapper<Picture> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("id", id)         // 指定主键 ID
+                    .eq("spaceId", spaceId); // 附加 spaceId 条件
+
+            // 执行删除
+            boolean isOk = remove(queryWrapper);
             ThrowUtils.throwIf(!isOk, new BusinessException(ErrorCode.OPERATION_ERROR, "删除图片失败"));
             // 释放额度
-            Long spaceId = picture.getSpaceId();
             if (spaceId != null) {
                 boolean update = spaceService.lambdaUpdate()
                         .eq(Space::getId, spaceId)
@@ -357,15 +361,18 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
     @Override
-    public PictureVO getPictureVOById(Long id, HttpServletRequest request) {
-        // 获取原始图片信息
-        Picture picture = getPictureById(id);
+    public PictureVO getPictureVOById(Long id, Long spaceId, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser == null, new BusinessException(ErrorCode.NOT_LOGIN_ERROR));
 
-        // 空间权限校验
-        Long spaceId = picture.getSpaceId();
+        // 获取原始图片信息
+        Picture picture = query().eq("id", id)
+                .eq("spaceId", spaceId)
+                .one();
+        ThrowUtils.throwIf(picture == null, new BusinessException(ErrorCode.PARAMS_ERROR, "图片资源不存在"));
+
         // 私人和团队空间
-        if (spaceId != null) {
+        if (spaceId != 0L) {
             // 仅有权限的人可查看
             boolean isHasPermission = StpUtil.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
             ThrowUtils.throwIf(!isHasPermission, new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限"));
@@ -476,10 +483,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         wrapper.set(StrUtil.isNotBlank(url), "url", url);
         wrapper.set(StrUtil.isNotBlank(name), "name", name);
         wrapper.set(StrUtil.isNotBlank(introduction), "introduction", introduction);
-        wrapper.set(spaceId != null, "spaceId", spaceId);
+//        wrapper.set(spaceId != null, "spaceId", spaceId);
         wrapper.set(StrUtil.isNotBlank(category), "category", category);
         wrapper.set(StrUtil.isNotBlank(tags), "tags", tags);
         wrapper.eq("id", id);
+        wrapper.eq("spaceId", spaceId != null ? spaceId : 0L);
         return wrapper;
     }
 
@@ -622,7 +630,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         queryWrapper.eq(ObjUtil.isNotEmpty(spaceId), "spaceId", spaceId);
         queryWrapper.ge(ObjUtil.isNotEmpty(startEditTime), "editTime", startEditTime);
         queryWrapper.lt(ObjUtil.isNotEmpty(endEditTime), "editTime", endEditTime);
-        queryWrapper.isNull(nullSpaceId, "spaceId");
+        queryWrapper.eq(nullSpaceId, "spaceId", 0);
+        // queryWrapper.isNull(nullSpaceId, "spaceId");
+
 
         if (!ObjectUtil.isEmpty(tags)) {
             for (String tag : tags) {

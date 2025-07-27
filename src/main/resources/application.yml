@@ -9,6 +9,9 @@ spring:
       default-property-inclusion: non_null # JSON处理时忽略非空字段
   application:
     name: intelliStore-co-pic-helper
+  servlet:
+    multipart:
+      max-file-size: 10MB
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -20,11 +23,36 @@ spring:
     port: 6379
     database: 0
     timeout: 5000
-  servlet:
-    multipart:
-      max-file-size: 10MB
+  # 空间图片分表
+  shardingsphere:
+    datasource:
+      names: intellistore_co_pic_helper
+      intellistore_co_pic_helper:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://localhost:3306/intellistore_co_pic_helper
+        username: root
+        password: root
+    rules:
+      sharding:
+        tables:
+          picture:
+            actual-data-nodes: intellistore_co_pic_helper.picture  # 动态分表
+            table-strategy:
+              standard:
+                sharding-column: spaceId
+                sharding-algorithm-name: picture_sharding_algorithm  # 使用自定义分片算法
+        sharding-algorithms:
+          picture_sharding_algorithm:
+            type: CLASS_BASED
+            props:
+              strategy: standard
+              algorithmClassName: com.hao_xiao_zi.intellistorecopichelper.manager.sharding.PictureShardingAlgorithm
+    props:
+      sql-show: true
 mybatis-plus:
   global-config:
+    enable-sql-runner: true # 开启sql运行器
     db-config:
       logic-delete-field: isDelete # 逻辑删除字段
       logic-delete-value: 1 # 默认逻辑删除值

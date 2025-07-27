@@ -26,7 +26,7 @@ public interface PictureService extends IService<Picture> {
 
     void fillReviewParam(Picture picture, User loginUser);
 
-    void pictureDelete(Long id, HttpServletRequest request);
+    void pictureDelete(Long id, Long spaceId, HttpServletRequest request);
 
     void clearPictureFile(Picture picture);
 
@@ -46,7 +46,7 @@ public interface PictureService extends IService<Picture> {
 
     void PictureReview(PictureReviewDTO pictureReviewDTO, HttpServletRequest request);
 
-    PictureVO getPictureVOById(Long id, HttpServletRequest request);
+    PictureVO getPictureVOById(Long id, Long spaceId, HttpServletRequest request);
 
     Integer PictureUploadByBatch(PictureUploadByBatchDTO pictureUploadByBatchDTO, HttpServletRequest request);
 
