@@ -1,7 +1,5 @@
-package com.hao_xiao_zi.intellistorecopichelper.manager.websocket.model;
+package com.hao_xiao_zi.intellistorecopichelper.manager.websocket;
 
-import com.hao_xiao_zi.intellistorecopichelper.manager.websocket.PictureEditHandler;
-import com.hao_xiao_zi.intellistorecopichelper.manager.websocket.WsHandshakeInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
