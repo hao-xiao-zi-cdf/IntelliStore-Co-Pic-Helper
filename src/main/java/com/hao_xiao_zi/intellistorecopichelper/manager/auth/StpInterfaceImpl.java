@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.servlet.HandlerMapping;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -104,7 +105,7 @@ public class StpInterfaceImpl implements StpInterface {
         }
         // 如果没有 spaceUserId，尝试通过 spaceId 或 pictureId 获取 Space 对象并处理
         Long spaceId = authContext.getSpaceId();
-        if (spaceId == null) {
+        if (spaceId == null || spaceId == 0L) {
             // 如果没有 spaceId，通过 pictureId 获取 Picture 对象和 Space 对象
             Long pictureId = authContext.getPictureId();
             // 图片 id 也没有，则默认通过权限校验
@@ -120,7 +121,7 @@ public class StpInterfaceImpl implements StpInterface {
             }
             spaceId = picture.getSpaceId();
             // 公共图库，仅本人或管理员可操作
-            if (spaceId == null) {
+            if (spaceId == 0L) {
                 if (picture.getUserId().equals(userId) || userService.isAdmin(loginUser)) {
                     return ADMIN_PERMISSIONS;
                 } else {
@@ -177,6 +178,10 @@ public class StpInterfaceImpl implements StpInterface {
             authRequest = JSONUtil.toBean(body, SpaceUserAuthContext.class);
         } else {
             Map<String, String> paramMap = ServletUtil.getParamMap(request);
+            // 获取所有路径参数 - Spring MVC标准方式
+            Map<String, String> pathParamMap = (Map<String, String>) request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+            // 可以将路径参数合并到普通参数中
+            paramMap.putAll(pathParamMap);
             authRequest = BeanUtil.toBean(paramMap, SpaceUserAuthContext.class);
         }
         // 根据请求路径区分 id 字段的含义

@@ -1,7 +1,9 @@
 package com.hao_xiao_zi.intellistorecopichelper.model.dto.spaceuser;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
@@ -13,6 +15,8 @@ import java.io.Serializable;
  * Time: 14:23
  */
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class SpaceUserCreateDTO implements Serializable {
 

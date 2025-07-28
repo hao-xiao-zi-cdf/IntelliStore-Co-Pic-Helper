@@ -65,7 +65,7 @@ public class SpaceAnalyzeServiceImpl implements SpaceAnalyzeService {
             Space space = spaceService.getSpaceById(spaceId);
             ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR,"空间资源不存在");
             // 判断当前用户是否为空间创建者或管理员
-            if (!Objects.equals(loginUser.getId(), space.getUserId()) || !userService.isAdmin(loginUser)) {
+            if (!Objects.equals(loginUser.getId(), space.getUserId()) && !userService.isAdmin(loginUser)) {
                 throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"非空间创建人或管理员，无权限");
             }
             return true;

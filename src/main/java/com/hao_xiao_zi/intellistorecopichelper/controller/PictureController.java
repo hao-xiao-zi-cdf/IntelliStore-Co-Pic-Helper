@@ -109,7 +109,7 @@ public class PictureController {
      * @param request 获取用户信息
      * @return 返回一个BaseResponse对象，包含删除操作的成功与否状态
      */
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}/{spaceId}")
     @ApiOperation("删除图片（本人和管理员）")
     @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_DELETE)
     public BaseResponse<Boolean> pictureDelete(@PathVariable Long id, @PathVariable Long spaceId, HttpServletRequest request) {
@@ -136,9 +136,9 @@ public class PictureController {
      * @param id 图片的唯一标识符
      * @return 通过审核，包含脱敏后的图片信息的响应对象
      */
-    @GetMapping("/vo/{id}")
+    @GetMapping("/vo/{id}/{spaceId}")
     @ApiOperation("查询图片信息（普通用户）")
-    public BaseResponse<PictureVO> getPictureVoById(@PathVariable Long id, @PathVariable Long spaceId, HttpServletRequest request) {
+    public BaseResponse<PictureVO> getPictureVoById(@PathVariable Long id, @PathVariable(name = "spaceId") Long spaceId, HttpServletRequest request) {
         PictureVO pictureVo = pictureService.getPictureVOById(id, spaceId,request);
         return ResultUtils.success(pictureVo);
     }

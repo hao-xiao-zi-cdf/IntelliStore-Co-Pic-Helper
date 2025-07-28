@@ -101,7 +101,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
                 // 查询数据库判断用户是否已创建
                 boolean isExists = query()
                         .eq("userId", loginUser.getId())
-                        .eq("spaceType", SpaceTypeEnum.PRIVATE.getValue())
+                        .eq("spaceType", spaceCreateDTO.getSpaceType())
                         .exists();
                 ThrowUtils.throwIf(isExists, new BusinessException(ErrorCode.OPERATION_ERROR, "每个用户仅能创建一个私有空间和一个共享空间"));
                 boolean isOk = save(space);

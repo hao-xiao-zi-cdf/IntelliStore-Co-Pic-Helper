@@ -143,7 +143,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 校验空间是否存在
         Long spaceId = pictureUploadDTO.getSpaceId();
         Space space = null;
-        if (spaceId != null) {
+        if (spaceId != 0L) {
             space = spaceService.getSpaceById(spaceId);
             ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
 //            已改为注解权限校验
@@ -231,7 +231,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         transactionTemplate.execute(status -> {
             boolean result = this.saveOrUpdate(picture);
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败");
-            if (finalSpaceId != null) {
+            if (finalSpaceId != 0L) {
                 boolean update = spaceService.lambdaUpdate()
                         .eq(Space::getId, finalSpaceId)
                         .setSql("totalSize = totalSize + " + picture.getPicSize())
@@ -307,7 +307,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             boolean isOk = remove(queryWrapper);
             ThrowUtils.throwIf(!isOk, new BusinessException(ErrorCode.OPERATION_ERROR, "删除图片失败"));
             // 释放额度
-            if (spaceId != null) {
+            if (spaceId != 0L) {
                 boolean update = spaceService.lambdaUpdate()
                         .eq(Space::getId, spaceId)
                         .setSql("totalSize = totalSize - " + picture.getPicSize())
@@ -374,7 +374,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 私人和团队空间
         if (spaceId != 0L) {
             // 仅有权限的人可查看
-            boolean isHasPermission = StpUtil.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
+            boolean isHasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
             ThrowUtils.throwIf(!isHasPermission, new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限"));
         }else {
             // 公共空间：未过审或拒绝图片查询只能是图片创建人或管理员
@@ -630,7 +630,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         queryWrapper.eq(ObjUtil.isNotEmpty(spaceId), "spaceId", spaceId);
         queryWrapper.ge(ObjUtil.isNotEmpty(startEditTime), "editTime", startEditTime);
         queryWrapper.lt(ObjUtil.isNotEmpty(endEditTime), "editTime", endEditTime);
-        queryWrapper.eq(nullSpaceId, "spaceId", 0);
+        queryWrapper.eq(nullSpaceId, "spaceId", 0L);
         // queryWrapper.isNull(nullSpaceId, "spaceId");
 
 
