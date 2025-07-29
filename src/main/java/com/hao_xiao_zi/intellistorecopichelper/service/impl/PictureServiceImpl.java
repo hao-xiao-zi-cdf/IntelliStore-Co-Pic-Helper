@@ -229,6 +229,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 开启编程式事务
         Long finalSpaceId = spaceId;
         transactionTemplate.execute(status -> {
+            if(picture.getId() != null){
+                picture.setSpaceId(null);
+            }
             boolean result = this.saveOrUpdate(picture);
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败");
             if (finalSpaceId != 0L) {
