@@ -52,12 +52,12 @@ public class RegexUtils {
      *
      * @param str   待检查的字符串
      * @param regex 正则表达式
-     * @return 如果字符串与正则表达式不匹配，则返回true；否则返回false
+     * @return 如果字符串与正则表达式匹配，则返回true；否则返回false
      */
     private static boolean mismatch(String str, String regex) {
         if (StrUtil.isBlank(str)) {
-            return true;
+            return false;
         }
-        return !str.matches(regex);
+        return str.matches(regex);
     }
 }

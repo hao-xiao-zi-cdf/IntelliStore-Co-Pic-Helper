@@ -914,6 +914,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             if (ObjectUtil.isNotEmpty(tag)) {
                 picture.setTags(tagJson);
             }
+            // 如果设置spaceId字段不为空，分库分表时会报错
+            picture.setSpaceId(null);
         }
 
         // 批量更新到数据库

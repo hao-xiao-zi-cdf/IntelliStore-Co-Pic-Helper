@@ -35,6 +35,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import static com.hao_xiao_zi.intellistorecopichelper.constant.PasswordConstant.DEFAULT_PASSWORD;
@@ -65,8 +66,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
 
         // 1.参数检验
         ThrowUtils.throwIf(ObjectUtil.hasEmpty(userAccount,userPassword,checkPassword),new BusinessException(ErrorCode.PARAMS_ERROR));
-        ThrowUtils.throwIf(RegexUtils.isAccountInvalid(userAccount), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的帐号不符合格式"));
-        ThrowUtils.throwIf(RegexUtils.isPasswordInvalid(userPassword), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
+        ThrowUtils.throwIf(!RegexUtils.isAccountInvalid(userAccount), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的帐号不符合格式"));
+        ThrowUtils.throwIf(!RegexUtils.isPasswordInvalid(userPassword), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
         ThrowUtils.throwIf(!ObjectUtil.equal(checkPassword, userPassword), new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致"));
 
         // 2.判断是否为已注册用户
@@ -98,8 +99,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public UserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 1.参数校验
         ThrowUtils.throwIf(ObjectUtil.hasEmpty(userAccount,userPassword),new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空"));
-        ThrowUtils.throwIf(RegexUtils.isAccountInvalid(userAccount), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的账号不符合格式"));
-        ThrowUtils.throwIf(RegexUtils.isPasswordInvalid(userPassword), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
+        ThrowUtils.throwIf(!RegexUtils.isAccountInvalid(userAccount), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的账号不符合格式"));
+        ThrowUtils.throwIf(!RegexUtils.isPasswordInvalid(userPassword), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
 
         // 2.密码加密
         String encryptPassword = getEncryptPassword(userPassword);
@@ -254,21 +255,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         String email = userEditDTO.getEmail();
         String profile = userEditDTO.getUserProfile();
 
-        ThrowUtils.throwIf(account != null && RegexUtils.isAccountInvalid(account), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的账号不符合格式"));
-        ThrowUtils.throwIf(password != null && RegexUtils.isPasswordInvalid(password), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
-        ThrowUtils.throwIf(phone != null && RegexUtils.isPhoneInvalid(phone), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的手机号不符合格式"));
-        ThrowUtils.throwIf(email != null && RegexUtils.isEmailInvalid(email), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的邮箱不符合格式"));
+        ThrowUtils.throwIf(StrUtil.isNotBlank(account) && !RegexUtils.isAccountInvalid(account), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的账号不符合格式"));
+        ThrowUtils.throwIf(StrUtil.isNotBlank(password) && !RegexUtils.isPasswordInvalid(password), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的密码不符合格式"));
+        ThrowUtils.throwIf(StrUtil.isNotBlank(phone) && !RegexUtils.isPhoneInvalid(phone), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的手机号不符合格式"));
+        ThrowUtils.throwIf(StrUtil.isNotBlank(email) && !RegexUtils.isEmailInvalid(email), new BusinessException(ErrorCode.PARAMS_ERROR, "输入的邮箱不符合格式"));
 
         // 判断是否为本人操作
-        ThrowUtils.throwIf(!userEditDTO.getId().equals(getLoginUser(request).getId()), new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限，非本人操作"));
+        ThrowUtils.throwIf(!Long.valueOf(id).equals(getLoginUser(request).getId()), new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限，非本人操作"));
 
         // 设置条件构造器
         UserUpdateDTO userUpdateDTO = BeanUtil.copyProperties(userEditDTO, UserUpdateDTO.class);
         UpdateWrapper<User> wrapper = getUseUpdateWrapper(userUpdateDTO);
         wrapper.set(StrUtil.isNotBlank(password), "userPassword", password);
-        wrapper.set(StrUtil.isNotBlank(phone), "phone", phone);
-        wrapper.set(StrUtil.isNotBlank(email), "email", email);
-        wrapper.set(StrUtil.isNotBlank(profile), "userProfile", profile);
+        wrapper.set("phone", Objects.equals(phone, "") ? null : phone);
+        wrapper.set("email", Objects.equals(email, "") ? null : email);
+        wrapper.set("userProfile", Objects.equals(profile, "") ? null : profile);
         wrapper.set("editTime", Timestamp.valueOf(LocalDateTime.now()));
 
         // 编辑
